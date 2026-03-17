@@ -1,0 +1,363 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clientes Nuevos – Gerencia (SPARTAN)</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- XLSX Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+    <style>
+         body {
+             background-color: #f6f7f9;
+         }
+
+         .logo-spartan {
+             height: 42px;
+         }
+
+         .card {
+             border-radius: 12px;
+         }
+
+         .nav-top .btn {
+             border-radius: 10px;
+         }
+
+         .table thead th {
+             white-space: nowrap;
+         }
+
+         .table td {
+             vertical-align: middle;
+         }
+
+         .muted-hint {
+             font-size: 12px;
+             color: #6c757d;
+         }
+
+         .kpi {
+             background: #fff;
+             border: 1px solid rgba(0,0,0,.06);
+             border-radius: 12px;
+             padding: 10px 12px;
+         }
+
+             .kpi .label {
+                 font-size: 12px;
+                 color: #6c757d;
+             }
+
+             .kpi .value {
+                 font-weight: 700;
+                 font-size: 18px;
+             }
+
+         /* =========================================================
+        TABLA DETALLE CLIENTES NUEVOS (Ordenada + Responsiva)
+        ========================================================= */
+
+        #cnTabla {
+            font-size: 12px;
+            table-layout: fixed; /* clave para que no se descuadre */
+            width: 100%;
+        }
+
+            #cnTabla thead th {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                background: #f8f9fa;
+                text-align: left !important; /* encabezado alineado a la izquierda */
+                vertical-align: middle;
+                white-space: nowrap; /* NO partir encabezados */
+                font-weight: 700;
+                font-size: 12px;
+                border-bottom: 1px solid rgba(0,0,0,.08);
+            }
+
+            #cnTabla td {
+                vertical-align: top;
+                padding: 6px 8px;
+                white-space: nowrap; /* por defecto NO partir */
+                overflow: hidden;
+                text-overflow: ellipsis; /* ... */
+            }
+
+                /* Permitir salto SOLO en columnas largas */
+                #cnTabla td.col-cliente,
+                #cnTabla td.col-articulo {
+                    white-space: normal; /* aquí sí */
+                    overflow: visible;
+                    text-overflow: clip;
+                    word-break: break-word;
+                }
+
+                /* Números a la derecha */
+                #cnTabla td.num,
+                #cnTabla th.num {
+                    text-align: right !important;
+                }
+
+                /* Anchos sugeridos por columna (12 columnas) */
+                #cnTabla th:nth-child(1), #cnTabla td:nth-child(1) { width: 160px;}/* Empleado */
+                #cnTabla th:nth-child(2), #cnTabla td:nth-child(2) { width: 60px; }/* Docto */
+                #cnTabla th:nth-child(3), #cnTabla td:nth-child(3) { width: 85px; }/* N° Folio */
+                #cnTabla th:nth-child(4), #cnTabla td:nth-child(4) { width: 120px;
+                }
+                /* Fecha Contabliz */
+                #cnTabla th:nth-child(5), #cnTabla td:nth-child(5) {
+                    width: 120px;
+                }
+                /* Fecha Creación */
+                #cnTabla th:nth-child(6), #cnTabla td:nth-child(6) {
+                    width: 110px;
+                }
+                /* Rut */
+                #cnTabla th:nth-child(7), #cnTabla td:nth-child(7) {
+                    width: 120px;
+                }
+                /* Código Cliente */
+                #cnTabla th:nth-child(8), #cnTabla td:nth-child(8) {
+                    width: 260px;
+                }
+                /* Cliente */
+                #cnTabla th:nth-child(9), #cnTabla td:nth-child(9) {
+                    width: 120px;
+                }
+                /* Código Artículo */
+                #cnTabla th:nth-child(10), #cnTabla td:nth-child(10) {
+                    width: 300px;
+                }
+                /* Artículo */
+                #cnTabla th:nth-child(11), #cnTabla td:nth-child(11) {
+                    width: 90px;
+                }
+                /* Cantidad */
+                #cnTabla th:nth-child(12), #cnTabla td:nth-child(12) {
+                    width: 110px;
+                }
+                /* Precio */
+                #cnTabla th:nth-child(13), #cnTabla td:nth-child(13) {
+                    width: 120px;
+                }
+        /* Total */
+
+        /* Mejor lectura en pantallas chicas */
+        @media (max-width: 992px) {
+            #cnTabla {
+                font-size: 11px;
+            }
+
+                #cnTabla td {
+                    padding: 5px 6px;
+                }
+        }
+
+        .cn-total-badge {
+            font-weight: 700;
+            font-size: 14px;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,.08);
+            border-radius: 999px;
+            padding: 6px 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.04);
+        }
+
+
+    </style>
+
+
+
+</head>
+
+<body>
+
+    <!-- Header Spartan Gerencia -->
+    <header class="border-bottom bg-white shadow-sm mb-3">
+        <div class="container-fluid py-2 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <img src="img/spartan-logo.png" alt="Spartan" class="logo-spartan" />
+                <div>
+                    <div class="fw-bold fs-5">Gerencia – SPARTAN (SAP B1)</div>
+                    <div class="small text-muted">Informe Clientes Nuevos (Químicos)</div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 nav-top">
+                <div class="small text-muted me-2" id="topUserInfo"></div>
+
+                <a class="btn btn-success btn-sm" href="ranking_ventas.html">
+                    <i class="bi bi-bar-chart"></i> Ranking
+                </a>
+                <a class="btn btn-success btn-sm" href="gerencia_presupuesto_ventas.html">
+                    <i class="bi bi-graph-up"></i> Gerencia
+                </a>
+                <a class="btn btn-success btn-sm" href="cierres_gerencia.html">
+                    <i class="bi bi-lock"></i> Cierres
+                </a>
+                <a class="btn btn-primary btn-sm" href="nuevos_gerencia.html">
+                    <i class="bi bi-person-plus"></i> Clientes Nuevos
+                </a>
+
+                <button class="btn btn-danger btn-sm" id="btnLogout">
+                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+
+        <!-- Estado -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="fw-bold">Estado: <span id="cnEstado" class="text-muted">Listo para cargar…</span></div>
+                <div class="muted-hint">Criterio: cliente nuevo por <b>CreateDate (OCRD)</b> + compra de <b>Químicos</b> (AcctCode 40101001). Excluye sucursales y excluye matriz si tiene sucursales.</div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Desde</label>
+                        <input type="date" id="cnDesde" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Hasta</label>
+                        <input type="date" id="cnHasta" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <button id="cnBuscar" class="btn btn-success w-100">
+                            <i class="bi bi-search"></i> Consultar
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <button id="cnExportar" class="btn btn-outline-primary w-100" disabled>
+                            <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                        </button>
+                    </div>
+                </div>
+
+                <hr />
+                <!-- KPI Clientes unicos, Filas detalle, Total neto -->
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <div class="kpi">
+                            <div class="label">Clientes únicos</div>
+                            <div class="value" id="kpiClientes">0</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="kpi">
+                            <div class="label">Filas detalle</div>
+                            <div class="value" id="kpiFilas">0</div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="kpi">
+                            <div class="label">Total neto (líneas)</div>
+                            <div class="value" id="kpiTotal">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico + Tabla -->
+        <div class="row g-3">
+            <div class="col-12 col-lg-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="fw-bold">Clientes nuevos por Empleado Ventas</div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="cnChart" height="240"></canvas>
+                        <div class="muted-hint mt-2">Tip: si hay muchos vendedores, usa el scroll en la tabla para ver el detalle.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <!-- Título -->
+                        <div class="fw-bold">
+                            Detalle
+                        </div>
+
+                        <!-- Total Detalle -->
+                        <div class="cn-total-badge">
+                            Total: <span id="cnTotalDetalle">$ 0</span>
+                        </div>
+
+                    </div>
+
+
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 65vh;">
+                            <table class="table table-sm table-striped align-middle mb-0" id="cnTabla">
+                                <thead class="table-light position-sticky top-0" style="z-index: 1;">
+                                    <tr>
+                                        <th>Empleado Ventas</th>
+                                        <th>Docto</th>
+                                        <th>N° Folio</th>
+                                        <th>Fecha Contabliz</th>
+                                        <th>Fecha Creación</th>
+                                        <th>Rut</th>
+                                        <th>Código Cliente</th>
+                                        <th>Cliente</th>
+                                        <th>Código Artículo</th>
+                                        <th>Artículo</th>
+                                        <th class="num">Cantidad</th>
+                                        <th class="num">Precio</th>
+                                        <th class="num">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+
+                    <div class="card-footer small text-muted">
+                        Exporta a Excel incluye hojas: <b>Resumen</b> y <b>Detalle</b>.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bootstrap -->   <!-- Librerías -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- CONFIG GLOBAL -->
+    <script>window.API_BASE = "https://localhost:7126";</script>
+    <!-- Spartan -->
+    <script src="/js/auth-header.js"></script>
+    <script src="/js/nuevos_gerencia.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/navbar.js"></script>
+
+
+
+
+
+
+
+</body>
+</html>

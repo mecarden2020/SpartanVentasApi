@@ -1,0 +1,281 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Cumplimiento Vendedor – Gerencia</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Si ya tienes tu estándar -->
+    <script src="js/auth-header.js"></script>
+</head>
+<body class="bg-light">
+
+    <div class="container-fluid py-3">
+        <div class="d-flex flex-wrap gap-2 align-items-end">
+            <div>
+                <label class="form-label mb-1">Año</label>
+                <select id="anio" class="form-select"></select>
+            </div>
+
+            <button id="btnBuscar" class="btn btn-primary">Ver</button>
+            <div id="estado" class="text-muted ms-2"></div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-12 col-xl-7">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle" id="tbl">
+                                <thead>
+                                    <tr>
+                                        <th>Mes</th>
+                                        <th class="text-end">Meta</th>
+                                        <th class="text-end">Total Neto</th>
+                                        <th class="text-end">% Cumpl.</th>
+                                        <th class="text-end">Faltante</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div class="small text-muted mt-2">
+                            * Faltante = max(Meta - Total Neto, 0)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-xl-5">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <canvas id="chart" height="230"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mt-2">
+        <div class="col-12 col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Meta YTD</div>
+                    <div id="kpiMeta" class="fs-4 fw-bold">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Total Neto YTD</div>
+                    <div id="kpiTotal" class="fs-4 fw-bold">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">% Cumplimiento YTD</div>
+                    <div id="kpiPct" class="fs-4 fw-bold">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small">Faltante YTD</div>
+                    <div id="kpiFaltante" class="fs-4 fw-bold">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chart;
+        const $ = (id) => document.getElementById(id);
+
+        function getToken() {
+            // Compatible con tus llaves típicas
+            return (localStorage.getItem("jwtToken") || localStorage.getItem("token") || "").trim() || null;
+        }
+        function money(n) {
+            if (n == null) return "";
+            return Number(n).toLocaleString("es-CL");
+        }
+
+        function fillYears() {
+            const y = new Date().getFullYear();
+            const sel = $("anio");
+            sel.innerHTML = "";
+            for (let i = 0; i < 5; i++) {
+                const opt = document.createElement("option");
+                opt.value = String(y - i);
+                opt.textContent = String(y - i);
+                sel.appendChild(opt);
+            }
+        }
+
+        async function fetchData(anio) {
+            const token = getToken();
+            if (!token) throw new Error("No hay token. Inicia sesión.");
+
+            const url = `/api/gerencia/cumplimiento-vendedor?anio=${encodeURIComponent(anio)}&slpCode=209`;
+            const r = await fetch(url, {
+                headers: {
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (!r.ok) {
+                const t = await r.text().catch(() => "");
+                throw new Error(`HTTP ${r.status} ${t}`);
+            }
+            return await r.json();
+        }
+
+        function renderTable(rows) {
+            const tb = $("tbl").querySelector("tbody");
+            tb.innerHTML = "";
+            for (const x of rows) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+          <td>${x.Mes ?? ""}</td>
+          <td class="text-end">${money(x.MetaMes)}</td>
+          <td class="text-end">${money(x.TotalNeto)}</td>
+          <td class="text-end">${(Number(x.CumplimientoNum ?? 0)).toFixed(2)}%</td>
+          <td class="text-end">${money(x.Faltante)}</td>
+        `;
+                tb.appendChild(tr);
+            }
+        }
+
+        function computeKPIs(rows) {
+            const byMonth = new Map();
+
+            for (const x of rows) {
+                const key = String(x.MesNum ?? x.mesNum ?? x.Mes ?? x.mes ?? "");
+                if (!key) continue;
+
+                const meta = Number(x.MetaMes ?? x.metaMes ?? 0);
+                const total = Number(x.TotalNeto ?? x.totalNeto ?? 0);
+
+                const prev = byMonth.get(key);
+                if (!prev) {
+                    byMonth.set(key, { meta, total });
+                } else {
+                    byMonth.set(key, {
+                        meta: Math.max(prev.meta, meta),
+                        total: Math.max(prev.total, total)
+                    });
+                }
+            }
+
+            let metaYTD = 0;
+            let totalYTD = 0;
+
+            for (const v of byMonth.values()) {
+                metaYTD += (v.meta || 0);
+                totalYTD += (v.total || 0);
+            }
+
+            const faltanteYTD = Math.max(metaYTD - totalYTD, 0);
+            const pctYTD = (metaYTD > 0) ? (totalYTD / metaYTD) * 100 : null;
+
+            $("kpiMeta").textContent = money(metaYTD);
+            $("kpiTotal").textContent = money(totalYTD);
+            $("kpiPct").textContent = pct(pctYTD);
+            $("kpiFaltante").textContent = money(faltanteYTD);
+        }
+
+
+
+
+
+
+        function renderChart(rows) {
+            // Asegurar orden Enero..Dic
+            rows.sort((a, b) => (a.MesNum ?? 0) - (b.MesNum ?? 0));
+
+            const labels = rows.map(x => x.Mes);
+            const cumplimiento = rows.map(x => Number(x.CumplimientoNum ?? 0));
+            const faltante = rows.map(x => Number(x.Faltante ?? 0));
+
+            const ctx = $("chart");
+            if (chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels,
+                    datasets: [
+                        { label: "% Cumplimiento", data: cumplimiento, yAxisID: "yPct" },
+                        { label: "Faltante ($)", data: faltante, yAxisID: "yMonto" }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (c) => {
+                                    const v = c.raw ?? 0;
+                                    if (c.dataset.yAxisID === "yPct") return `${c.dataset.label}: ${Number(v).toFixed(2)}%`;
+                                    return `${c.dataset.label}: ${Number(v).toLocaleString("es-CL")}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        yPct: {
+                            position: "left",
+                            title: { display: true, text: "% Cumplimiento" },
+                            ticks: { callback: (v) => v + "%" }
+                        },
+                        yMonto: {
+                            position: "right",
+                            title: { display: true, text: "Faltante ($)" },
+                            grid: { drawOnChartArea: false },
+                            ticks: { callback: (v) => Number(v).toLocaleString("es-CL") }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function run() {
+            try {
+                $("estado").textContent = "Cargando…";
+                $("btnBuscar").disabled = true;
+
+                const anio = $("anio").value;
+                const data = await fetchData(anio);
+
+                renderTable(data);
+                renderChart(data);
+
+                $("estado").textContent = "OK";
+            } catch (e) {
+                $("estado").textContent = "Error: " + (e?.message ?? e);
+            } finally {
+                $("btnBuscar").disabled = false;
+            }
+        }
+
+        $("btnBuscar").addEventListener("click", run);
+        document.addEventListener("DOMContentLoaded", () => {
+            fillYears();
+            run();
+        });
+    </script>
+
+</body>
+</html>

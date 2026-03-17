@@ -1,0 +1,560 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Ranking ventas – SPARTAN (SAP B1)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f7f7f7;
+        }
+
+        .logo-spartan {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .card {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        .table-sm td, .table-sm th {
+            padding: .25rem .5rem;
+            font-size: 0.78rem;
+        }
+
+        #estadoTexto {
+            font-weight: 600;
+        }
+
+        /* (Opcional) look “cuadrado” para nav */
+        .nav-top .btn {
+            min-width: 130px;
+            border-radius: 0;
+        }
+
+            .nav-top .btn + .btn {
+                margin-left: 4px;
+            }
+
+        /* Loader (OCULTO por defecto, estable) */
+        #loaderOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.75);
+            display: none; /* clave */
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #loaderBox {
+            background: white;
+            border-radius: .75rem;
+            padding: 20px 30px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .loader-spinner {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 4px solid #e0e0e0;
+            border-top-color: #0d6efd;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Botón Cerrar Sesión - Estilo SPARTAN */
+        .btn-spartan-logout {
+            background-color: #00527A;
+            color: #ffffff;
+            border: none;
+            min-width: 130px;
+            border-radius: 0;
+            font-weight: 600;
+        }
+
+            .btn-spartan-logout:hover {
+                background-color: #003f5e;
+                color: #ffffff;
+            }
+
+        /* Firma tenue opcional */
+        .powered {
+            position: fixed;
+            right: 14px;
+            bottom: 146px;
+            font-size: 11px;
+            color: rgba(0,0,0,.35);
+            user-select: none;
+            transition: color .2s ease;
+        }
+
+            .powered:hover {
+                color: rgba(0,0,0,.65);
+            }
+    </style>
+</head>
+
+<body>
+
+    <!-- LOADER (ÚNICO) -->
+    <div id="loaderOverlay" aria-hidden="true">
+        <div id="loaderBox">
+            <div class="loader-spinner"></div>
+            <div>
+                <div id="loaderText" class="fw-semibold">Procesando…</div>
+                <div class="small text-muted">Por favor espere, procesando información.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ENCABEZADO GENERAL (MISMO ESTÁNDAR QUE SÁBANA) -->
+    <header class="border-bottom bg-white mb-3">
+        <div class="container-fluid py-2 d-flex justify-content-between align-items-center">
+
+            <!-- ✅ BRAND CLICKABLE → Dashboard -->
+            <a href="ingreso.html"
+               class="d-flex align-items-center text-decoration-none text-dark"
+               title="Volver al Dashboard">
+
+                <img src="img/spartan-logo.png" alt="Spartan" class="logo-spartan" />
+
+                <div class="ms-2">
+                    <div class="fw-bold" style="font-size:20px;">
+                        Ventas – SPARTAN (SAP B1)
+                    </div>
+                    <div class="small text-muted">
+                        Portal interno de vendedores
+                    </div>
+                </div>
+
+            </a>
+
+            <!-- ✅ BOTONES NAVEGACIÓN -->
+            <div class="nav-top d-flex gap-2 align-items-center">
+
+                <button type="button"
+                        class="btn btn-secondary nav-dashboard-btn"
+                        data-url="cargar_ventas.html">
+                    Cargar ventas
+                </button>
+
+                <button type="button"
+                        class="btn btn-success nav-dashboard-btn"
+                        data-url="ranking_ventas.html">
+                    Ranking ventas
+                </button>
+
+                <button type="button"
+                        class="btn btn-secondary nav-dashboard-btn"
+                        data-url="sabana_ventas.html">
+                    Sábana Ventas
+                </button>
+
+                <button type="button"
+                        class="btn btn-secondary nav-dashboard-btn"
+                        data-url="estado_pedidos.html">
+                    Estado Pedidos
+                </button>
+
+                <button type="button"
+                        class="btn btn-spartan-logout ms-2"
+                        onclick="logout()">
+                    Cerrar sesión
+                </button>
+
+            </div>
+
+        </div>
+    </header>
+
+
+    <main class="container-fluid" style="max-width: 1400px;">
+
+        <!-- ESTADO DE AUTENTICACIÓN -->
+        <div class="card mb-3">
+            <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
+                <div>
+                    <strong>Estado:</strong>
+                    <span id="estadoTexto" class="text-muted">Verificando autenticación…</span>
+                </div>
+                <div id="estadoUsuario" class="small text-muted"></div>
+            </div>
+        </div>
+
+        <!-- FILTROS RANKING -->
+        <div class="card mb-3">
+            <div class="card-body row g-3 align-items-end">
+                <div class="col-sm-3">
+                    <label class="form-label">Desde</label>
+                    <input id="txtDesde" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">Hasta</label>
+                    <input id="txtHasta" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">Cliente (CardCode, opcional)</label>
+                    <input id="txtCardCode" class="form-control" disabled
+                           placeholder="(el ranking actual no filtra por cliente)" />
+                    <div class="form-text">
+                        Por ahora el SP genera ranking global por vendedor.
+                    </div>
+                </div>
+                <div class="col-sm-3 d-grid gap-2">
+                    <button class="btn btn-success" onclick="cargarRanking()">Cargar ranking</button>
+
+                    <button id="btnExportarRanking"
+                            class="btn btn-outline-success btn-sm"
+                            onclick="exportarRankingExcel()">
+                        Exportar ranking a Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRÁFICO RANKING (TOP N) -->
+        <div class="card mb-3">
+            <div class="card-header">Top clientes por venta (Total anual)</div>
+            <div class="card-body">
+                <canvas id="chartRanking" height="80"></canvas>
+                <div id="resumenRanking" class="small text-muted mt-2"></div>
+            </div>
+        </div>
+
+        <!-- TABLA RANKING DETALLE -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span>Detalle ranking de clientes</span>
+                <span class="small text-muted">Columnas dinámicas por mes</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 450px;">
+                    <table class="table table-sm table-hover mb-0" id="tblRanking">
+                        <thead class="table-light">
+                            <tr id="theadRanking"></tr>
+                        </thead>
+                        <tbody id="tbodyRanking"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="powered">powered by MCF-2025</div>
+
+    </main>
+
+    <script>
+        // ====== VARIABLES GLOBALES ======
+        let jwtToken = null;
+        let currentSlpCode = null;
+        let currentRole = null;
+        let currentAlias = null;
+        let currentLogin = null;
+        let currentPermisos = [];
+
+        let rankingActual = [];
+        let chartRanking = null;
+
+        // ====== UTIL ESTADO ======
+        function setEstado(texto, tipo = "muted") {
+            const span = document.getElementById("estadoTexto");
+            span.textContent = texto;
+            span.className = "";
+            span.classList.add("text-" + tipo);
+        }
+
+        // ====== LOADER ======
+        function showLoader(texto) {
+            const overlay = document.getElementById("loaderOverlay");
+            const txt = document.getElementById("loaderText");
+            if (texto) txt.textContent = texto;
+            overlay.style.display = "flex";
+        }
+        function hideLoader() {
+            document.getElementById("loaderOverlay").style.display = "none";
+        }
+
+        // ====== NAVEGACIÓN SUPERIOR (MISMO ESTÁNDAR) ======
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".nav-dashboard-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const url = btn.getAttribute("data-url");
+                    if (url) window.location.href = url;
+                });
+            });
+        });
+
+        // ====== LOGOUT (ÚNICO) ======
+        function logout() {
+            localStorage.removeItem("jwtToken");
+            localStorage.removeItem("currentSlpCode");
+            localStorage.removeItem("currentRole");
+            localStorage.removeItem("currentAlias");
+            localStorage.removeItem("currentLogin");
+            localStorage.removeItem("currentPermisos");
+            window.location.href = "login.html";
+        }
+
+        // ====== INICIALIZAR AUTENTICACIÓN (localStorage) ======
+        function initAuth() {
+            const token = localStorage.getItem("jwtToken");
+            if (!token) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            jwtToken = token;
+            currentSlpCode = localStorage.getItem("currentSlpCode") || null;
+            currentRole = localStorage.getItem("currentRole") || "";
+            currentAlias = localStorage.getItem("currentAlias") || "";
+            currentLogin = localStorage.getItem("currentLogin") || "";
+            const permisosStr = localStorage.getItem("currentPermisos");
+            currentPermisos = permisosStr ? JSON.parse(permisosStr) : [];
+
+            setEstado("Autenticado correctamente", "success");
+            document.getElementById("estadoUsuario").textContent =
+                `Usuario: ${currentLogin} (alias: ${currentAlias}) – Rol: ${currentRole}`;
+
+            const btnExport = document.getElementById("btnExportarRanking");
+            if (btnExport) btnExport.disabled = false;
+        }
+
+        // ====== FECHAS INICIALES (año actual) ======
+        (function initFechas() {
+            const hoy = new Date();
+            const anio = hoy.getFullYear();
+            document.getElementById("txtDesde").value = `${anio}-01-01`;
+            document.getElementById("txtHasta").value = `${anio}-12-31`;
+        })();
+
+        // ====== CARGAR RANKING ======
+        async function cargarRanking() {
+            if (!jwtToken) {
+                setEstado("Debe autenticarse primero", "danger");
+                alert("Debe iniciar sesión.");
+                return;
+            }
+
+            const desde = document.getElementById("txtDesde").value;
+            const hasta = document.getElementById("txtHasta").value;
+
+            if (!desde || !hasta) {
+                setEstado("Debe seleccionar rango de fechas", "danger");
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.append("desde", desde);
+            params.append("hasta", hasta);
+
+            if (currentRole === "VENDEDOR" && currentSlpCode != null && currentSlpCode !== "") {
+                params.append("slpCode", currentSlpCode);
+            }
+
+            try {
+                showLoader("Cargando ranking...");
+
+                const resp = await fetch("/api/Ventas/ranking?" + params.toString(), {
+                    headers: { "Authorization": "Bearer " + jwtToken }
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    setEstado("Error al cargar ranking: " + msg, "danger");
+                    limpiarRanking();
+                    return;
+                }
+
+                const data = await resp.json();
+                rankingActual = Array.isArray(data) ? data : [];
+
+                if (!rankingActual.length) {
+                    setEstado("No hay datos de ranking en el rango seleccionado", "warning");
+                    limpiarRanking();
+                    return;
+                }
+
+                setEstado("Ranking cargado (" + rankingActual.length + " filas)", "success");
+                renderTablaRanking(rankingActual);
+                renderGraficoRanking(rankingActual);
+
+            } catch (err) {
+                console.error(err);
+                setEstado("Error de conexión al cargar ranking: " + err, "danger");
+                limpiarRanking();
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function limpiarRanking() {
+            document.getElementById("theadRanking").innerHTML = "";
+            document.getElementById("tbodyRanking").innerHTML = "";
+            document.getElementById("resumenRanking").textContent = "";
+            if (chartRanking) {
+                chartRanking.destroy();
+                chartRanking = null;
+            }
+        }
+
+        // ====== TABLA DINÁMICA DE RANKING ======
+        function renderTablaRanking(data) {
+            const thead = document.getElementById("theadRanking");
+            const tbody = document.getElementById("tbodyRanking");
+            thead.innerHTML = "";
+            tbody.innerHTML = "";
+
+            if (!data.length) return;
+
+            const columnas = Object.keys(data[0]);
+
+            columnas.forEach(col => {
+                const th = document.createElement("th");
+                th.textContent = col;
+                thead.appendChild(th);
+            });
+
+            data.forEach(fila => {
+                const tr = document.createElement("tr");
+                columnas.forEach(col => {
+                    const td = document.createElement("td");
+                    let val = fila[col];
+
+                    if (val === null || val === undefined) {
+                        val = "";
+                    } else if (typeof val === "number" && col.toLowerCase().includes("total")) {
+                        val = val.toLocaleString("es-CL", { minimumFractionDigits: 0 });
+                        td.classList.add("text-end");
+                    }
+
+                    td.textContent = val;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById("resumenRanking").textContent =
+                `Total filas en ranking: ${data.length}`;
+        }
+
+        // ====== GRÁFICO TOP N (por Total anual) ======
+        function renderGraficoRanking(data) {
+            if (!data.length) return;
+
+            const nombreCol = "Nombre del cliente";
+            const totalCol = "Total anual";
+
+            const procesado = data.map(r => ({
+                nombre: r[nombreCol],
+                total: Number(r[totalCol] || 0)
+            }))
+                .filter(x => x.nombre && x.total > 0)
+                .sort((a, b) => b.total - a.total);
+
+            const topN = procesado.slice(0, 10);
+            const labels = topN.map(x => x.nombre);
+            const valores = topN.map(x => x.total);
+
+            const ctx = document.getElementById("chartRanking").getContext("2d");
+            if (chartRanking) chartRanking.destroy();
+
+            chartRanking = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels,
+                    datasets: [{
+                        label: "Total anual",
+                        data: valores
+                    }]
+                }
+            });
+
+            const totalTop = valores.reduce((a, b) => a + b, 0);
+            document.getElementById("resumenRanking").textContent =
+                `Mostrando top ${topN.length} clientes. Suma total anual del top: ${totalTop.toLocaleString("es-CL", { minimumFractionDigits: 0 })}`;
+        }
+
+        // ====== EXPORTAR RANKING A EXCEL ======
+        async function exportarRankingExcel() {
+            if (!jwtToken) {
+                alert("Debe iniciar sesión antes de exportar.");
+                return;
+            }
+
+            const desde = document.getElementById("txtDesde").value;
+            const hasta = document.getElementById("txtHasta").value;
+
+            if (!desde || !hasta) {
+                alert("Debe seleccionar el rango de fechas.");
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.append("desde", desde);
+            params.append("hasta", hasta);
+
+            if (currentRole === "VENDEDOR" && currentSlpCode != null && currentSlpCode !== "") {
+                params.append("slpCode", currentSlpCode);
+            }
+
+            const url = "/api/Ventas/ranking-excel?" + params.toString();
+
+            try {
+                showLoader("Generando Excel de ranking...");
+
+                const resp = await fetch(url, {
+                    method: "GET",
+                    headers: { "Authorization": "Bearer " + jwtToken }
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    alert("Error al generar Excel de ranking: " + msg);
+                    return;
+                }
+
+                const blob = await resp.blob();
+
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `ranking_ventas_${desde.replace(/-/g, "")}_${hasta.replace(/-/g, "")}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+
+            } catch (err) {
+                alert("Error de conexión al generar Excel de ranking: " + err);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // ====== INIT PAGE ======
+        (function initPage() {
+            initAuth();
+
+
+
+        })();
+
+
+    </script>
+</body>
+</html>

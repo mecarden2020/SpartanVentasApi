@@ -1,0 +1,831 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Cargar ventas – SPARTAN (SAP B1)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f7f7f7;
+        }
+
+        .logo-spartan {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .card {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        .table-sm td, .table-sm th {
+            padding: .25rem .5rem;
+            font-size: .78rem;
+        }
+
+        #estadoTexto {
+            font-weight: 600;
+        }
+
+        .nav-top .btn {
+            min-width: 130px;
+            border-radius: 0;
+        }
+
+            .nav-top .btn + .btn {
+                margin-left: 4px;
+            }
+
+        #loaderOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.75);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #loaderBox {
+            background: #fff;
+            border-radius: .75rem;
+            padding: 20px 30px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .loader-spinner {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 4px solid #e0e0e0;
+            border-top-color: #0d6efd;
+            animation: spin .9s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .btn-spartan-logout {
+            background-color: #00527A;
+            color: #fff;
+            border: none;
+            min-width: 130px;
+            border-radius: 0;
+            font-weight: 600;
+        }
+
+            .btn-spartan-logout:hover {
+                background-color: #003f5e;
+                color: #fff;
+            }
+
+        .detalle-lineas-wrap {
+            background: #f8f9fa;
+        }
+
+        .detalle-lineas-title {
+            font-size: 12px;
+            color: #666;
+            margin: 6px 0 8px;
+        }
+
+        .mini-table th, .mini-table td {
+            font-size: 12px;
+            padding: 4px 6px;
+            white-space: nowrap;
+        }
+
+            .mini-table td.desc {
+                white-space: normal;
+                min-width: 260px;
+            }
+
+        .badge-fe {
+            background: #0d6efd;
+        }
+
+        .badge-nc {
+            background: #dc3545;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- LOADER -->
+    <div id="loaderOverlay" aria-hidden="true">
+        <div id="loaderBox">
+            <div class="loader-spinner"></div>
+            <div>
+                <div id="loaderText" class="fw-semibold">Cargando…</div>
+                <div class="small text-muted">Por favor espere, procesando información.</div>
+            </div>
+        </div>
+    </div>
+
+    <header class="border-bottom bg-white mb-3">
+        <div class="container-fluid py-2 d-flex justify-content-between align-items-center">
+
+            <!-- ✅ BRAND CLICKABLE → Vuelve a ingreso.html -->
+            <a href="ingreso.html"
+               class="d-flex align-items-center text-decoration-none text-dark"
+               title="Volver al Dashboard">
+
+                <img src="img/spartan-logo.png" alt="Spartan" class="logo-spartan" />
+
+                <div class="ms-2">
+                    <div class="fw-bold" style="font-size:20px;">
+                        Ventas – SPARTAN (SAP B1)
+                    </div>
+                    <div class="small text-muted">
+                        Portal interno de vendedores
+                    </div>
+                </div>
+
+            </a>
+
+            <!-- ✅ BOTONES DERECHA (sin cambios) -->
+            <div class="nav-top d-flex gap-2 align-items-center">
+                <button type="button" class="btn btn-success nav-dashboard-btn" data-url="cargar_ventas.html">
+                    Cargar ventas
+                </button>
+
+                <button type="button" class="btn btn-secondary nav-dashboard-btn" data-url="ranking_ventas.html">
+                    Ranking ventas
+                </button>
+
+                <button type="button" class="btn btn-secondary nav-dashboard-btn" data-url="sabana_ventas.html">
+                    Sábana Ventas
+                </button>
+
+                <button type="button" class="btn btn-secondary nav-dashboard-btn" data-url="estado_pedidos.html">
+                    Estado Pedidos
+                </button>
+
+                <button type="button" class="btn btn-spartan-logout ms-2" onclick="logout()">
+                    Cerrar sesión
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+
+    <main class="container-fluid" style="max-width:1400px;">
+
+        <div class="card mb-3">
+            <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
+                <div>
+                    <strong>Estado:</strong>
+                    <span id="estadoTexto" class="text-muted">Verificando autenticación…</span>
+                </div>
+                <div id="estadoUsuario" class="small text-muted"></div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body row g-3 align-items-end">
+                <div class="col-sm-3">
+                    <label class="form-label">Desde</label>
+                    <input id="txtDesde" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">Hasta</label>
+                    <input id="txtHasta" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">Cliente (CardCode, opcional)</label>
+                    <input id="txtCardCode" class="form-control" />
+                </div>
+                <div class="col-sm-3 d-grid gap-2">
+                    <button class="btn btn-success" onclick="cargarVentas()">Cargar ventas</button>
+                    <button id="btnExportar" class="btn btn-outline-primary btn-sm" onclick="exportarExcel()">Exportar detalle a Excel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Venta neta por mes (Químicos)</div>
+            <div class="card-body">
+                <canvas id="chartVentas" height="80"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-semibold">Detalle por cliente (Químicos)</span>
+                    <span class="small text-muted ms-2">AcctCode 40101001</span>
+                </div>
+                <div id="lblTotalVentas" class="fw-bold text-success"></div>
+            </div>
+
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height:450px;">
+                    <table class="table table-sm table-hover mb-0" id="tblDetalle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Código Cliente</th>
+                                <th>Nombre Cliente</th>
+                                <th class="text-end">Venta Neta</th>
+                                <th class="text-center">Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ===================== CONFIG / STATE =====================
+        const API_BASE = window.API_BASE || window.location.origin;
+
+        let jwtToken = null;
+        let currentSlpCode = null;
+        let currentRole = "";
+        let currentAlias = "";
+        let currentLogin = "";
+        let currentPermisos = [];
+        let chartInstance = null;
+        let datosActuales = [];
+
+        // cache SOLO UNA VEZ (sin duplicar)
+        const detalleCache = new Map(); // key = cardCode|desde|hasta
+
+        // ===================== UI HELPERS =====================
+        function setEstado(texto, tipo = "muted") {
+            const span = document.getElementById("estadoTexto");
+            span.textContent = texto;
+            span.className = "";
+            span.classList.add("text-" + tipo);
+        }
+
+        function showLoader(texto) {
+            const overlay = document.getElementById("loaderOverlay");
+            const txt = document.getElementById("loaderText");
+            if (txt && texto) txt.textContent = texto;
+            overlay.style.display = "flex";
+        }
+        function hideLoader() {
+            document.getElementById("loaderOverlay").style.display = "none";
+        }
+
+        function moneyCLP(n) {
+            return (Number(n) || 0).toLocaleString("es-CL", { minimumFractionDigits: 0 });
+        }
+        function fmtCLP(n) {
+            return (Number(n) || 0).toLocaleString("es-CL");
+        }
+        function badgeTipo(tipo) {
+            const t = String(tipo || "").toUpperCase();
+            const cls = (t === "NC") ? "badge-nc" : "badge-fe";
+            return `<span class="badge ${cls}">${t || ""}</span>`;
+        }
+
+        function logout() {
+            localStorage.removeItem("jwtToken");
+            localStorage.removeItem("currentSlpCode");
+            localStorage.removeItem("currentRole");
+            localStorage.removeItem("currentAlias");
+            localStorage.removeItem("currentLogin");
+            localStorage.removeItem("currentPermisos");
+            window.location.href = "login.html";
+        }
+
+        // ===================== AUTH =====================
+        function initAuth() {
+            const token = localStorage.getItem("jwtToken");
+            if (!token) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            jwtToken = token;
+            currentSlpCode = localStorage.getItem("currentSlpCode") || null;
+            currentRole = localStorage.getItem("currentRole") || "";
+            currentAlias = localStorage.getItem("currentAlias") || "";
+            currentLogin = localStorage.getItem("currentLogin") || "";
+            const permisosStr = localStorage.getItem("currentPermisos");
+            currentPermisos = permisosStr ? JSON.parse(permisosStr) : [];
+
+            setEstado("Autenticado correctamente", "success");
+            document.getElementById("estadoUsuario").textContent =
+                `Usuario: ${currentLogin} (alias: ${currentAlias}) – Rol: ${currentRole}`;
+
+            const btnExportar = document.getElementById("btnExportar");
+            if (btnExportar) btnExportar.disabled = false;
+        }
+
+        async function fetchAuth(url, opts = {}) {
+            const headers = new Headers(opts.headers || {});
+            headers.set("Accept", "application/json");
+            if (jwtToken) headers.set("Authorization", "Bearer " + jwtToken);
+            return fetch(url, { ...opts, headers });
+        }
+
+        // ===================== DATA LOAD =====================
+        async function cargarVentas() {
+            if (!jwtToken) {
+                setEstado("Debe autenticarse primero", "danger");
+                alert("Debe iniciar sesión.");
+                return;
+            }
+
+            const desde = document.getElementById("txtDesde").value;
+            const hasta = document.getElementById("txtHasta").value;
+            const cardCode = document.getElementById("txtCardCode").value.trim();
+
+            if (!desde || !hasta) {
+                setEstado("Debe seleccionar rango de fechas", "danger");
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.append("desde", desde);
+            params.append("hasta", hasta);
+
+            if (currentRole === "VENDEDOR" && currentSlpCode != null && String(currentSlpCode).trim() !== "") {
+                params.append("slpCode", currentSlpCode);
+            }
+            if (cardCode) params.append("cardCode", cardCode);
+
+            try {
+                showLoader("Cargando ventas...");
+
+                const url = `${API_BASE}/api/Ventas/periodo-clientes?${params.toString()}`;
+                const resp = await fetchAuth(url);
+
+                if (!resp.ok) {
+                    const msg = await resp.text().catch(() => "");
+                    setEstado("Error al cargar ventas: " + msg, "danger");
+                    return;
+                }
+
+                const data = await resp.json();
+                datosActuales = Array.isArray(data) ? data : [];
+
+                if (datosActuales.length === 0) {
+                    setEstado("No hay datos en el rango seleccionado", "warning");
+                    limpiarGraficoYTabla();
+                    return;
+                }
+
+                setEstado(`Ventas cargadas (${datosActuales.length} clientes)`, "success");
+                renderTabla(datosActuales);
+                renderGrafico(datosActuales);
+
+            } catch (err) {
+                console.error(err);
+                setEstado("Error de conexión: " + (err?.message || err), "danger");
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function limpiarGraficoYTabla() {
+            const tb = document.querySelector("#tblDetalle tbody");
+            if (tb) tb.innerHTML = "";
+            const lbl = document.getElementById("lblTotalVentas");
+            if (lbl) lbl.textContent = "";
+            if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        }
+
+        // ===================== TABLE CLIENTES =====================
+        function renderTabla(data) {
+            const tbody = document.querySelector("#tblDetalle tbody");
+            if (!tbody) return;
+
+            tbody.innerHTML = "";
+            const rows = Array.isArray(data) ? data : [];
+
+            const total = rows.reduce((acc, r) => {
+                const neto = Number(r.ventaNeta ?? r.VentaNeta ?? r.netoCliente ?? r.NetoCliente ?? 0) || 0;
+                return acc + neto;
+            }, 0);
+
+            const lbl = document.getElementById("lblTotalVentas");
+            if (lbl) lbl.textContent = `Total ventas netas: ${moneyCLP(total)}`;
+
+            for (const r of rows) {
+                const cardCode = String(r.cardCode ?? r.CardCode ?? "").trim();
+                const cardName = String(r.cardName ?? r.CardName ?? "").trim();
+                const ventaNeta = Number(r.ventaNeta ?? r.VentaNeta ?? r.netoCliente ?? r.NetoCliente ?? 0) || 0;
+
+                const safeName = cardName.replace(/'/g, "\\'");
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                  <td>${cardCode}</td>
+                  <td>${cardName}</td>
+                  <td class="text-end">${fmtCLP(ventaNeta)}</td>
+                  <td class="text-center">
+                    <button type="button"
+                      class="btn btn-outline-primary btn-sm btn-detalle-lineas"
+                      onclick="toggleDetalleLineas(this,'${cardCode}','${safeName}')"
+                      title="Ver detalle de líneas">
+                      <i class="bi bi-info-circle"></i>
+                    </button>
+                  </td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        // ===================== SUBTABLA LINEAS =====================
+        function renderLineasTable(rows) {
+            if (!Array.isArray(rows) || rows.length === 0) {
+                return `<div class="text-muted small">Sin líneas en el período.</div>`;
+            }
+
+            const fmtFecha = (v) => {
+                if (!v) return "";
+                const s = String(v);
+                return s.length >= 10 ? s.slice(0, 10) : s;
+            };
+
+            // Si backend a veces devuelve objeto, lo prevenimos acá también
+            const arr = Array.isArray(rows) ? rows : [];
+
+            let totalNeto = 0;
+
+            const trs = arr.map(r => {
+                const tipo = String(r.TipoDoc ?? "").toUpperCase();
+                const sgn = (tipo === "NC" ? -1 : 1);
+
+                const qty = Number(r.Quantity ?? 0);
+                const precio = Number(r.Precio ?? r.Price ?? 0);
+
+                let lineTotal = Number(r.LineTotal ?? 0);
+                if (sgn < 0 && lineTotal > 0) lineTotal = lineTotal * -1;
+
+                let neto = Number(r.NetoLinea ?? 0);
+                if (sgn < 0 && neto > 0) neto = neto * -1;
+
+                totalNeto += neto;
+
+                return `
+                  <tr>
+                    <td>${badgeTipo(tipo)}</td>
+                    <td>${fmtFecha(r.DocDate)}</td>
+                    <td class="text-end">${r.FolioNum ?? ""}</td>
+                    <td>${r.ItemCode ?? ""}</td>
+                    <td class="desc">${r.Dscription ?? ""}</td>
+                    <td class="text-end">${qty.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="text-end">${fmtCLP(precio)}</td>
+                    <td class="text-end">${fmtCLP(lineTotal)}</td>
+                    <td class="text-end fw-semibold">${fmtCLP(neto)}</td>
+                  </tr>
+                `;
+            }).join("");
+
+            return `
+                <div class="detalle-lineas-title">
+                  Detalle de productos (FE suma / NC resta) — Químicos (40101001)
+                  <span class="ms-2 text-muted small">(${arr.length} líneas)</span>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered mini-table mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Tipo</th>
+                        <th>Fecha</th>
+                        <th class="text-end">Folio</th>
+                        <th>Código</th>
+                        <th>Artículo</th>
+                        <th class="text-end">Cant.</th>
+                        <th class="text-end">Precio</th>
+                        <th class="text-end">Total Línea</th>
+                        <th class="text-end">Neto</th>
+                      </tr>
+                    </thead>
+                    <tbody>${trs}</tbody>
+                    <tfoot>
+                      <tr>
+                        <td colspan="8" class="text-end fw-semibold">Total Neto</td>
+                        <td class="text-end fw-bold">${fmtCLP(totalNeto)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              `;
+        }
+
+
+
+        // ================================================================
+        // Cache detalle: key = cardCode|desde|hasta
+        // Cache único (una sola vez en el archivo)
+        //const detalleCache = new Map(); // key = cardCode|desde|hasta
+        // ✅ Cache único (evita "already been declared")
+        window.detalleCache = window.detalleCache || new Map();
+
+        // ✅ JWT único
+        function getJwt() {
+            return (
+                window.jwtToken ||
+                localStorage.getItem("jwtToken") ||
+                localStorage.getItem("token") ||
+                sessionStorage.getItem("jwtToken") ||
+                sessionStorage.getItem("token") ||
+                null
+            );
+        }
+
+        // ✅ Fetch con Bearer
+        async function fetchAuth(url, opts = {}) {
+            const token = getJwt();
+            const headers = new Headers(opts.headers || {});
+            headers.set("Accept", "application/json");
+            if (token) headers.set("Authorization", `Bearer ${token}`);
+            return fetch(url, { ...opts, headers });
+        }
+
+        // ✅ Toma valor de fecha desde IDs conocidos
+        function getDateValue(possibleIds) {
+            for (const id of possibleIds) {
+                const el = document.getElementById(id);
+                if (el && el.value) return el.value;
+            }
+            return null;
+        }
+
+        // ✅ Normaliza cualquier “wrapper” común a un array
+        function normalizeRows(payload) {
+            if (!payload) return [];
+
+            // Si el backend ya devuelve un array, listo:
+            if (Array.isArray(payload)) return payload;
+
+            // Wrappers típicos:
+            const candidates = [
+                payload.rows,
+                payload.data,
+                payload.items,
+                payload.result,
+                payload.value,
+                payload.lineas,
+                payload.detalle,
+                payload.detalleLineas,
+                payload.detalles,
+            ];
+
+            for (const c of candidates) {
+                if (Array.isArray(c)) return c;
+            }
+
+            // Wrappers anidados (por si viene { ok:true, data:{ rows:[...] } }):
+            const deep = payload.data || payload.result;
+            if (deep && typeof deep === "object") {
+                if (Array.isArray(deep.rows)) return deep.rows;
+                if (Array.isArray(deep.data)) return deep.data;
+                if (Array.isArray(deep.items)) return deep.items;
+            }
+
+            console.warn("normalizeRows(): payload no contiene lista reconocible", payload);
+            return [];
+        }
+
+
+        // ✅ Toggle detalle
+        async function toggleDetalleLineas(btn, cardCode, cardName) {
+            const tr = btn.closest("tr");
+            const table = tr?.closest("table");
+            const colCount = table?.querySelectorAll("thead th")?.length || 1;
+
+            // TOMA SIEMPRE LOS IDS REALES DE TU HTML: txtDesde / txtHasta
+            const desdeRaw = getDateValue(["txtDesde", "desde", "fDesde", "FechaDesde", "dtDesde"]);
+            const hastaRaw = getDateValue(["txtHasta", "hasta", "fHasta", "FechaHasta", "dtHasta"]);
+
+            if (!desdeRaw || !hastaRaw) {
+                console.error("No se encontraron fechas Desde/Hasta", { desdeRaw, hastaRaw });
+                alert("No se encontraron las fechas (Desde/Hasta). Revisa IDs en el HTML.");
+                return;
+            }
+
+            const desde = String(desdeRaw).slice(0, 10);
+            const hasta = String(hastaRaw).slice(0, 10);
+
+            // 🔑 Key de cache por cliente + periodo
+            const key = `${cardCode}|${desde}|${hasta}`;
+
+            // Toggle: cerrar si ya está abierto
+            const next = tr.nextElementSibling;
+            if (next && next.classList.contains("tr-detalle-lineas")) {
+                next.remove();
+                btn.classList.remove("btn-primary");
+                btn.classList.add("btn-outline-primary");
+                return;
+            }
+
+            // Cierra otros abiertos
+            document.querySelectorAll(".tr-detalle-lineas").forEach(x => x.remove());
+            document.querySelectorAll(".btn-detalle-lineas").forEach(b => {
+                b.classList.remove("btn-primary");
+                b.classList.add("btn-outline-primary");
+            });
+
+            // Inserta fila detalle (spinner)
+            const detailTr = document.createElement("tr");
+            detailTr.className = "tr-detalle-lineas";
+            detailTr.innerHTML = `
+        <td colspan="${colCount}" class="detalle-lineas-wrap">
+          <div class="d-flex align-items-center gap-2">
+            <div class="spinner-border spinner-border-sm" role="status"></div>
+            <div class="small text-muted">Cargando detalle de ${cardName}...</div>
+          </div>
+        </td>
+      `;
+            tr.insertAdjacentElement("afterend", detailTr);
+
+            btn.classList.remove("btn-outline-primary");
+            btn.classList.add("btn-primary");
+
+            const td = detailTr.querySelector("td");
+
+            try {
+                // ✅ Detecta si viene desde cache ANTES de buscar
+                const fromCache = detalleCache?.has ? detalleCache.has(key) : (detalleCache.get(key) != null);
+
+                let rows = detalleCache.get(key);
+
+                if (!rows) {
+                    const url =
+                        `${API_BASE}/api/ventas/quimicos/lineas` +
+                        `?desde=${encodeURIComponent(desde)}` +
+                        `&hasta=${encodeURIComponent(hasta)}` +
+                        `&cardCode=${encodeURIComponent(cardCode)}`;
+
+                    console.log("GET", url);
+
+                    const res = await fetchAuth(url, { method: "GET" });
+                    console.log("STATUS", res.status);
+
+                    const contentType = res.headers.get("content-type") || "";
+                    const rawText = await res.text(); // leemos una vez
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status} - ${rawText}`);
+                    }
+
+                    const json = contentType.includes("application/json")
+                        ? JSON.parse(rawText || "null")
+                        : rawText;
+
+                    console.log("RAW JSON", json);
+
+                    rows = normalizeRows(json);
+                    detalleCache.set(key, rows);
+                }
+
+                if (!Array.isArray(rows) || rows.length === 0) {
+                    td.innerHTML = `<div class="text-muted small">Sin líneas para este cliente en el período seleccionado.</div>`;
+                    return;
+                }
+
+                // ✅ Punto 3: indicador visual de cache
+                const cacheBadge = fromCache
+                    ? `<span class="badge bg-secondary ms-2" title="Cargado desde memoria (sin nueva consulta)">CACHE</span>`
+                    : "";
+
+                // Opcional: encabezado arriba del detalle (queda bonito y claro)
+                td.innerHTML = `
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="small text-muted">
+              Detalle de productos (FE suma / NC resta) — Químicos (40101001) (${rows.length} líneas)
+              ${cacheBadge}
+            </div>
+          </div>
+          ${renderLineasTable(rows)}
+        `;
+
+            } catch (e) {
+                console.error("Detalle líneas error:", e);
+                td.innerHTML = `
+          <div class="text-danger small">
+            No se pudo cargar el detalle (${String(e?.message || e)}).
+          </div>
+        `;
+            }
+        }
+
+
+
+
+
+
+
+        // ===================== CHART =====================
+        function renderGrafico(data) {
+            // Si tu endpoint /periodo-clientes ya viene por mes, aquí puedes ajustar.
+            // Por ahora: agrupa por YYYY-MM desde DocDate del DETALLE si existe.
+            const porMes = {};
+
+            (Array.isArray(data) ? data : []).forEach(r => {
+                // si viene un campo mes/año, puedes usarlo directo
+                // fallback: usa ventaNeta total como "(período)"
+                const key = "(período)";
+                const val = Number(r.ventaNeta ?? r.VentaNeta ?? r.netoCliente ?? r.NetoCliente ?? 0) || 0;
+                porMes[key] = (porMes[key] || 0) + val;
+            });
+
+            const etiquetas = Object.keys(porMes);
+            const valores = etiquetas.map(k => porMes[k]);
+
+            const ctx = document.getElementById("chartVentas").getContext("2d");
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: etiquetas,
+                    datasets: [{ label: "Venta Neta (Químicos)", data: valores }]
+                }
+            });
+        }
+
+        // ===================== EXCEL =====================
+        async function exportarExcel() {
+            if (!jwtToken) { alert("Debe iniciar sesión antes de exportar."); return; }
+
+            const desde = document.getElementById("txtDesde").value;
+            const hasta = document.getElementById("txtHasta").value;
+            const cardCode = document.getElementById("txtCardCode").value.trim();
+
+            if (!desde || !hasta) { alert("Debe seleccionar el rango de fechas."); return; }
+
+            const params = new URLSearchParams();
+            params.append("desde", desde);
+            params.append("hasta", hasta);
+
+            if (currentRole === "VENDEDOR" && currentSlpCode != null && String(currentSlpCode).trim() !== "") {
+                params.append("slpCode", currentSlpCode);
+            }
+            if (cardCode) params.append("cardCode", cardCode);
+
+            const url = `${API_BASE}/api/Ventas/periodo-lineas-quimicos-excel?${params.toString()}`;
+
+            try {
+                showLoader("Generando Excel de ventas...");
+
+                const resp = await fetchAuth(url, { method: "GET" });
+
+                if (!resp.ok) {
+                    const msg = await resp.text().catch(() => "");
+                    alert("Error al generar Excel: " + msg);
+                    return;
+                }
+
+                const blob = await resp.blob();
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `ventas_${desde.replace(/-/g, "")}_${hasta.replace(/-/g, "")}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+
+            } catch (err) {
+                alert("Error de conexión al generar Excel: " + (err?.message || err));
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // ===================== INIT =====================
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".nav-dashboard-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const url = btn.getAttribute("data-url");
+                    if (url) window.location.href = url;
+                });
+            });
+
+            // Fechas iniciales: mes actual (puedes cambiar a año completo si quieres)
+            const hoy = new Date();
+            const anio = hoy.getFullYear();
+            const mes = hoy.getMonth();
+            const fd = new Date(anio, mes, 1).toISOString().slice(0, 10);
+            const ld = new Date(anio, mes + 1, 0).toISOString().slice(0, 10);
+            document.getElementById("txtDesde").value = fd;
+            document.getElementById("txtHasta").value = ld;
+
+            initAuth();
+        });
+    </script>
+</body>
+</html>

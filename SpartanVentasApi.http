@@ -1,0 +1,6 @@
+@SpartanVentasApi_HostAddress = http://localhost:5022
+
+GET {{SpartanVentasApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

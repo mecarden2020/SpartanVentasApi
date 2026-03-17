@@ -1,0 +1,36 @@
+﻿
+    /* ===== HEADER SPARTAN GLOBAL ===== */
+
+    .header-spartan
+
+{
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.logo-spartan {
+    height: 42px;
+}
+
+.sp-nav-btn {
+    border-radius: 10px;
+    font-weight: 500;
+    padding: 6px 14px;
+}
+
+    .sp-nav-btn.active {
+        box-shadow: 0 0 0 2px rgba(13,110,253,.2);
+    }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .logo-spartan {
+        height: 36px;
+    }
+
+    .sp-nav-btn {
+        padding: 5px 10px;
+        font-size: 13px;
+    }
+}
+

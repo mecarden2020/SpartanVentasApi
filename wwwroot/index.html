@@ -1,0 +1,512 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Dashboard Ventas – SPARTAN (SAP B1)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f7f7f7;
+        }
+
+        .card {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        .table-sm td, .table-sm th {
+            padding: .25rem .5rem;
+            font-size: 0.78rem;
+        }
+
+        #estadoTexto {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <header style="background:#ffffff;border-bottom:1px solid #ddd;padding:10px 20px;display:flex;align-items:center;gap:15px;">
+        <img src="img/spartan-logo.png" alt="Spartan" style="height:48px;">
+        <div>
+            <div style="font-size:20px;font-weight:bold;">Dashboard Ventas – SPARTAN (SAP B1)</div>
+            <div style="font-size:12px;color:#555;">Portal interno de vendedores</div>
+        </div>
+    </header>
+
+    <main style="padding:20px;">
+
+        <!-- ===================== LOGIN ===================== -->
+        <div class="card mb-3">
+            <div class="card-body row g-3 align-items-end">
+                <div class="col-sm-3">
+                    <label class="form-label">Usuario (alias)</label>
+                    <input id="txtUsuario" class="form-control" placeholder="wgonzalez / rchavez / amartinez / admin" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">Contraseña</label>
+                    <input id="txtPassword" type="password" class="form-control" placeholder="••••" />
+                </div>
+                <div class="col-sm-2">
+                    <button id="btnLogin" class="btn btn-primary w-100" onclick="login()">Ingresar</button>
+                </div>
+                <div class="col-sm-4">
+                    <div><strong>Estado:</strong> <span id="estadoTexto" class="text-muted">No autenticado</span></div>
+                    <div id="estadoUsuario" class="small text-muted"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== FILTROS ===================== -->
+        <div class="card mb-3">
+            <div class="card-body row g-3 align-items-end">
+                <div class="col-sm-3">
+                    <label class="form-label">Desde</label>
+                    <input id="txtDesde" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">Hasta</label>
+                    <input id="txtHasta" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">Cliente (CardCode, opcional)</label>
+                    <input id="txtCardCode" class="form-control" />
+                </div>
+
+                <div class="col-sm-3 d-grid gap-2">
+                    <button class="btn btn-success" onclick="cargarVentas()">Cargar ventas</button>
+                    <button class="btn btn-secondary" onclick="cargarRanking()">Ranking ventas</button>
+                    <button class="btn btn-success" onclick="cargarDashboard1()">Dashboard 1</button>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== RANKING DE VENTAS ===================== -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Ranking de ventas (SP_Ranking_Ventas_Pivot)</span>
+                <button class="btn btn-outline-success btn-sm" onclick="exportarRankingExcel()">Exportar a Excel</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 350px;">
+                    <table class="table table-sm table-hover mb-0" id="tblRanking">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== GRÁFICO ===================== -->
+        <div class="card mb-3">
+            <div class="card-header">Venta neta por mes</div>
+            <div class="card-body">
+                <canvas id="chartVentas" height="80"></canvas>
+            </div>
+        </div>
+
+        <!-- ===================== DETALLE POR CLIENTE ===================== -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span>Detalle por cliente</span>
+                <button id="btnExportar" class="btn btn-outline-primary btn-sm" onclick="exportarExcel()">Exportar a Excel</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 450px;">
+                    <table class="table table-sm table-hover mb-0" id="tblDetalle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Año</th>
+                                <th>Mes</th>
+                                <th>Código Cliente</th>
+                                <th>Nombre Cliente</th>
+                                <th class="text-end">Venta Neta SN</th>
+                                <th class="text-end"># Facturas</th>
+                                <th class="text-end"># NC</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ===================== SCRIPTS ===================== -->
+    <script>
+        // ----------------- variables globales -----------------
+        let jwtToken = null;
+        let currentSlpCode = null;
+        let currentRole = null;
+        let currentPermisos = [];
+        let chartInstance = null;
+        let datosActuales = [];   // ventas detalle
+        let rankingActual = [];   // ranking desde SP_Ranking_Ventas_Pivot
+
+        // ----------------- util estado -----------------
+        function setEstado(texto, tipo = "muted") {
+            const span = document.getElementById("estadoTexto");
+            span.textContent = texto;
+            span.className = "";
+            span.classList.add("text-" + tipo);
+        }
+
+        // ----------------- LOGIN -----------------
+        async function login() {
+            const username = document.getElementById("txtUsuario").value.trim();
+            const password = document.getElementById("txtPassword").value;
+
+            if (!username || !password) {
+                setEstado("Debe ingresar usuario y contraseña", "danger");
+                return;
+            }
+
+            try {
+                const resp = await fetch("/api/Auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    setEstado("Login inválido: " + msg, "danger");
+                    document.getElementById("estadoUsuario").textContent = "";
+                    return;
+                }
+
+                const data = await resp.json();
+
+                // Esperamos: token, slpCode, username, login, role, permisos[]
+                jwtToken = data.token;
+                currentSlpCode = data.slpCode ?? null;
+                currentRole = data.role ?? "";
+                currentPermisos = Array.isArray(data.permisos) ? data.permisos : [];
+
+                setEstado("Autenticado correctamente", "success");
+                document.getElementById("estadoUsuario").textContent =
+                    `Usuario: ${data.login} (alias: ${data.username}) – Rol: ${data.role}`;
+
+                // Permiso para exportar detalle
+                const btnExportar = document.getElementById("btnExportar");
+                if (currentPermisos.includes("EXPORTAR_EXCEL") || currentRole === "ADMIN") {
+                    btnExportar.disabled = false;
+                } else {
+                    btnExportar.disabled = true;
+                }
+
+            } catch (err) {
+                console.error(err);
+                setEstado("Error de conexión: " + err, "danger");
+                document.getElementById("estadoUsuario").textContent = "";
+            }
+        }
+
+        // ----------------- CARGAR DASHBOARD 1 -----------------
+        async function cargarDashboard1() {
+            if (!jwtToken) {
+                setEstado("Debe autenticarse primero", "danger");
+                return;
+            }
+
+            // puedes usar la fecha "Hasta" del filtro o simplemente hoy:
+            const hasta = document.getElementById("txtHasta")?.value
+                || new Date().toISOString().substring(0, 10);
+
+            try {
+                const resp = await fetch(`/api/Ventas/dashboard1?hasta=${hasta}`, {
+                    headers: {
+                        "Authorization": "Bearer " + jwtToken
+                    }
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    setEstado("Error al cargar Dashboard1: " + msg, "danger");
+                    return;
+                }
+
+                const data = await resp.json();
+                console.log("Dashboard1:", data);
+
+                setEstado("Dashboard1 cargado correctamente", "success");
+
+                // De momento solo mostramos algunos datos en consola
+                // Aquí luego conectaremos los gráficos y tarjetas.
+                // Ejemplo: mostrar total 12 meses en algún span:
+                // document.getElementById("lblTotal12Meses").textContent =
+                //     data.total12Meses.toLocaleString("es-CL", { minimumFractionDigits: 0 });
+
+            } catch (e) {
+                console.error(e);
+                setEstado("Error de conexión al cargar Dashboard1: " + e, "danger");
+            }
+        }
+        // ----------------- FIN CARGAR DASHBOARD 1 -----------------
+
+        // ----------------- CARGAR VENTAS DETALLE -----------------
+        async function cargarVentas() {
+            if (!jwtToken) {
+                setEstado("Debe autenticarse primero", "danger");
+                return;
+            }
+
+            const desde = document.getElementById("txtDesde").value;
+            const hasta = document.getElementById("txtHasta").value;
+            const cardCode = document.getElementById("txtCardCode").value.trim();
+
+            if (!desde || !hasta) {
+                setEstado("Debe seleccionar rango de fechas", "danger");
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.append("desde", desde);
+            params.append("hasta", hasta);
+
+            // Si es vendedor, filtramos por su SlpCode
+            if (currentRole === "VENDEDOR" && currentSlpCode != null) {
+                params.append("slpCode", currentSlpCode);
+            }
+
+            if (cardCode) {
+                params.append("cardCode", cardCode);
+            }
+
+            try {
+                const resp = await fetch("/api/Ventas/periodo?" + params.toString(), {
+                    headers: {
+                        "Authorization": "Bearer " + jwtToken
+                    }
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    setEstado("Error al cargar ventas: " + msg, "danger");
+                    return;
+                }
+
+                const data = await resp.json();
+                datosActuales = data;
+
+                setEstado("Ventas cargadas (" + data.length + " filas)", "success");
+                renderTablaVentas(data);
+                renderGrafico(data);
+
+            } catch (err) {
+                console.error(err);
+                setEstado("Error de conexión: " + err, "danger");
+            }
+        }
+
+        function renderTablaVentas(data) {
+            const tbody = document.querySelector("#tblDetalle tbody");
+            tbody.innerHTML = "";
+
+            data.forEach(row => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${row.anio}</td>
+                    <td>${row.mes} (${row.nombreMes})</td>
+                    <td>${row.codigoCliente}</td>
+                    <td>${row.nombreCliente}</td>
+                    <td class="text-end">${row.ventaNetaSN.toLocaleString("es-CL", { minimumFractionDigits: 0 })}</td>
+                    <td class="text-end">${row.cantFacturas}</td>
+                    <td class="text-end">${row.cantNC}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderGrafico(data) {
+            const porMes = {};
+            data.forEach(x => {
+                const key = `${x.anio}-${String(x.mes).padStart(2, "0")}`;
+                porMes[key] = (porMes[key] || 0) + x.ventaNetaSN;
+            });
+
+            const etiquetas = Object.keys(porMes).sort();
+            const valores = etiquetas.map(k => porMes[k]);
+
+            const ctx = document.getElementById("chartVentas").getContext("2d");
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: etiquetas,
+                    datasets: [{
+                        label: "Venta Neta SN",
+                        data: valores
+                    }]
+                }
+            });
+        }
+
+        // ----------------- EXPORTAR DETALLE (VENTAS) -----------------
+        function exportarExcel() {
+            if (!datosActuales || !datosActuales.length) {
+                alert("No hay datos para exportar");
+                return;
+            }
+
+            let csv = "Año;Mes;NombreMes;CodigoCliente;NombreCliente;VentaNetaSN;CantFacturas;CantNC\n";
+
+            datosActuales.forEach(r => {
+                csv += `${r.anio};${r.mes};${r.nombreMes};${r.codigoCliente};"${r.nombreCliente.replace(/"/g, '""')}";${r.ventaNetaSN};${r.cantFacturas};${r.cantNC}\n`;
+            });
+
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "ventas_detalle.csv";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            URL.revokeObjectURL(url);
+        }
+
+        // ----------------- CARGAR RANKING -----------------
+        async function cargarRanking() {
+            if (!jwtToken) {
+                setEstado("Debe autenticarse primero", "danger");
+                return;
+            }
+
+            const desde = document.getElementById("txtDesde").value;
+            const hasta = document.getElementById("txtHasta").value;
+
+            if (!desde || !hasta) {
+                setEstado("Debe seleccionar rango de fechas", "danger");
+                return;
+            }
+
+            try {
+                const resp = await fetch(`/api/Ventas/ranking?desde=${desde}&hasta=${hasta}`, {
+                    headers: {
+                        "Authorization": "Bearer " + jwtToken
+                    }
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    setEstado("Error al cargar ranking: " + msg, "danger");
+                    return;
+                }
+
+                const data = await resp.json();
+                rankingActual = data;
+
+                mostrarTablaRanking(data);
+                setEstado("Ranking cargado correctamente", "success");
+
+            } catch (e) {
+                console.error(e);
+                setEstado("Error de conexión al cargar ranking: " + e, "danger");
+            }
+        }
+
+        function mostrarTablaRanking(data) {
+            const thead = document.querySelector("#tblRanking thead");
+            const tbody = document.querySelector("#tblRanking tbody");
+
+            thead.innerHTML = "";
+            tbody.innerHTML = "";
+
+            if (!data || data.length === 0) {
+                return;
+            }
+
+            // Encabezados dinámicos
+            const columnas = Object.keys(data[0]);
+            let thRow = "<tr>";
+            columnas.forEach(col => {
+                thRow += `<th>${col}</th>`;
+            });
+            thRow += "</tr>";
+            thead.innerHTML = thRow;
+
+            // Filas
+            data.forEach(row => {
+                let tr = "<tr>";
+                columnas.forEach(col => {
+                    const val = row[col];
+                    tr += `<td>${val ?? ""}</td>`;
+                });
+                tr += "</tr>";
+                tbody.innerHTML += tr;
+            });
+        }
+
+        // ----------------- EXPORTAR RANKING (BACKEND CSV) -----------------
+        async function exportarRankingExcel() {
+            if (!jwtToken) {
+                alert("Debe autenticarse primero");
+                return;
+            }
+
+            const desde = document.getElementById("txtDesde").value;
+            const hasta = document.getElementById("txtHasta").value;
+
+            if (!desde || !hasta) {
+                setEstado("Debe seleccionar rango de fechas", "danger");
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.append("desde", desde);
+            params.append("hasta", hasta);
+            // El SlpCode se resuelve en el backend según el rol.
+
+            try {
+                const resp = await fetch("/api/Ventas/ranking-excel?" + params.toString(), {
+                    headers: {
+                        "Authorization": "Bearer " + jwtToken
+                    }
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    setEstado("Error al exportar ranking: " + msg, "danger");
+                    return;
+                }
+
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "ranking_ventas.csv";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+
+                setEstado("Ranking exportado a Excel correctamente", "success");
+            } catch (err) {
+                console.error(err);
+                setEstado("Error de conexión al exportar ranking: " + err, "danger");
+            }
+        }
+
+        // ----------------- FECHAS INICIALES -----------------
+        (function initFechas() {
+            const hoy = new Date();
+            const anio = hoy.getFullYear();
+            document.getElementById("txtDesde").value = `${anio}-01-01`;
+            document.getElementById("txtHasta").value = `${anio}-12-31`;
+        })();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,333 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Ventas – SPARTAN (SAP B1) – Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+    <style>
+        :root {
+            --corp: #00527A; /* RGB(0,82,122) */
+            --card: #d6d6d6; /* tarjeta gris como tu imagen */
+            --input: #ececec;
+            --input-border: #c9c9c9;
+            --btn: #d68a2f; /* botón naranjo */
+            --btn-hover: #c97f2a;
+        }
+
+        body {
+            margin: 0;
+            background: var(--corp);
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        }
+
+        /* Área centrada (deja espacio para la marquesina inferior) */
+        .center-wrap {
+            min-height: calc(100vh - 140px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px 0;
+        }
+
+        /* Tarjeta estilo “imagen adjunta” */
+        .login-card {
+            width: min(520px, 92vw);
+            background: var(--card);
+            border-radius: 14px;
+            box-shadow: 0 18px 40px rgba(0,0,0,.25);
+            padding: 28px 34px 22px;
+            border: none;
+        }
+
+        .logo-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .logo-spartan {
+            height: 56px; /* ajusta si quieres */
+            object-fit: contain;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,.12));
+        }
+
+        .tile {
+            height: 56px;
+            width: 190px;
+        }
+
+        .portal-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 800;
+            color: #333;
+            margin-bottom: 18px;
+            letter-spacing: .3px;
+        }
+
+
+        .field input {
+            width: 100%;
+            height: 54px;
+            border-radius: 4px;
+            border: 1px solid var(--input-border);
+            background: var(--input);
+            padding: 0 14px;
+            font-size: 16px;
+            outline: none;
+            text-align: center; /* como tu referencia */
+            font-weight: 700;
+        }
+
+            .field input::placeholder {
+                font-weight: 800;
+                color: #7b7b7b;
+            }
+
+            .field input:focus {
+                border-color: rgba(0,82,122,.55);
+                box-shadow: 0 0 0 4px rgba(0,82,122,.15);
+            }
+
+        .btn-login {
+            background: linear-gradient( 180deg, #006090, #00527A );
+        }
+
+
+            .btn-login:hover {
+                background: var(--btn-hover);
+            }
+
+        .estado {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        /* Marquesina inferior (logos/fotos) */
+        .bottom-strip {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 10px;
+            background: rgba(0,0,0,.28);
+            backdrop-filter: blur(3px);
+        }
+
+        .marquee {
+            width: min(1100px, 96vw);
+            overflow: hidden;
+            border-radius: 8px;
+            background: rgba(255,255,255,.10);
+            border: 1px solid rgba(255,255,255,.18);
+            padding: 10px 0;
+        }
+
+        .track {
+            display: flex;
+            gap: 18px;
+            width: max-content;
+            animation: scroll 22s linear infinite;
+            padding-left: 18px;
+            align-items: center;
+        }
+
+        @keyframes scroll {
+            from {
+                transform: translateX(0);
+            }
+
+            to {
+                transform: translateX(-50%);
+            }
+        }
+
+        .tile {
+            height: 56px;
+            width: 190px;
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 10px 18px rgba(0,0,0,.18);
+        }
+
+            .tile img {
+                max-height: 80%;
+                max-width: 88%;
+                object-fit: contain;
+                display: block;
+            }
+
+        .marquee:hover .track {
+            animation-play-state: paused;
+        }
+
+        /* Firma tenue opcional */
+        .powered {
+            position: fixed;
+            right: 14px;
+            bottom: 146px;
+            font-size: 11px;
+            color: rgba(255,255,255,.35);
+            user-select: none;
+            transition: color .2s ease;
+        }
+
+            .powered:hover {
+                color: rgba(255,255,255,.75);
+            }
+    </style>
+</head>
+
+<body>
+
+    <div class="center-wrap">
+        <div class="login-card">
+
+            <div class="logo-box">
+                <!-- Tu logo actual -->
+                <img src="img/spartan-logo.png" class="logo-spartan" alt="Spartan" />
+            </div>
+            <div class="portal-title">
+                Portal Interno Vendedores
+            </div>
+
+
+            <div class="field mb-3">
+                <input id="txtUsuario" class="form-control"
+                       placeholder="Usuario" autocomplete="username" />
+            </div>
+
+            <div class="field mb-3">
+                <input id="txtPassword" type="password" class="form-control"
+                       placeholder="Contraseña" autocomplete="current-password" />
+            </div>
+
+            <div class="d-grid">
+                <button id="btnLogin" class="btn btn-login text-white fw-bold py-3" onclick="login()">Ingresar</button>
+
+            </div>
+
+            <div class="estado mt-3">
+                <div>
+                    <strong style="color:#333;">Estado:</strong>
+                    <span id="estadoTexto" class="text-muted">No autenticado</span>
+                </div>
+                <div id="estadoUsuario" class="small text-muted"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="powered">powered by MCF-2025</div>
+
+    <!-- Banda inferior con marquesina -->
+    <div class="bottom-strip">
+        <div class="marquee">
+            <div class="track" id="track">
+
+                <!-- BLOQUE A: cambia estas rutas por tus fotos/logos -->
+                <div class="tile"><img src="img/marquee/01.png" alt="1"></div>
+                <div class="tile"><img src="img/marquee/02.png" alt="2"></div>
+                <div class="tile"><img src="img/marquee/03.png" alt="3"></div>
+                <div class="tile"><img src="img/marquee/04.png" alt="4"></div>
+                <div class="tile"><img src="img/marquee/05.png" alt="5"></div>
+                <div class="tile"><img src="img/marquee/06.png" alt="5"></div>
+                <div class="tile"><img src="img/marquee/07.png" alt="5"></div>
+                <div class="tile"><img src="img/marquee/08.png" alt="5"></div>
+
+                <!-- BLOQUE B (duplicado para loop continuo) -->
+                <div class="tile"><img src="img/marquee/01.png" alt="1 dup"></div>
+                <div class="tile"><img src="img/marquee/02.png" alt="2 dup"></div>
+                <div class="tile"><img src="img/marquee/03.png" alt="3 dup"></div>
+                <div class="tile"><img src="img/marquee/04.png" alt="4 dup"></div>
+                <div class="tile"><img src="img/marquee/05.png" alt="5 dup"></div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setEstado(texto, tipo = "muted") {
+            const span = document.getElementById("estadoTexto");
+            span.textContent = texto;
+            span.className = "";
+            span.classList.add("text-" + tipo);
+        }
+
+        async function login() {
+            const username = document.getElementById("txtUsuario").value.trim();
+            const password = document.getElementById("txtPassword").value;
+
+            if (!username || !password) {
+                setEstado("Debe ingresar usuario y contraseña", "danger");
+                return;
+            }
+
+            try {
+                const resp = await fetch("/api/Auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    setEstado("Login inválido: " + msg, "danger");
+                    document.getElementById("estadoUsuario").textContent = "";
+                    return;
+                }
+
+                const data = await resp.json();
+
+                // Guardar datos en localStorage para usarlos en todos los dashboards
+                localStorage.setItem("jwtToken", data.token);
+                localStorage.setItem("currentSlpCode", data.slpCode ?? "");
+                localStorage.setItem("currentAlias", data.username ?? "");
+                localStorage.setItem("currentLogin", data.login ?? "");
+                localStorage.setItem("currentRole", (data.role ?? "VENDEDOR").toUpperCase());
+                localStorage.setItem("currentPermisos", JSON.stringify(data.permisos ?? []));
+
+                setEstado("Autenticado correctamente, redirigiendo…", "success");
+
+                // ✅ Redirigir según rol
+                const role = (data.role ?? "VENDEDOR").toUpperCase();
+                if (role === "GERENCIA" || role === "ADMIN") {
+                    window.location.href = "gerencia_presupuesto_ventas.html";
+                } else {
+                    window.location.href = "ingreso.html";
+                }
+
+                // Redirigir al dashboard principal
+                window.location.href = "ingreso.html";
+
+            } catch (err) {
+                console.error(err);
+                setEstado("Error de conexión: " + err, "danger");
+                document.getElementById("estadoUsuario").textContent = "";
+            }
+        }
+
+        // ENTER para enviar
+        document.addEventListener("keydown", e => {
+            if (e.key === "Enter") login();
+        });
+    </script>
+
+</body>
+</html>

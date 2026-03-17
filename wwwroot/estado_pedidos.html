@@ -1,0 +1,465 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Estado de pedidos – SPARTAN (SAP B1)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+    <style>
+        body {
+            background-color: #f7f7f7;
+        }
+
+        .logo-spartan {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .card {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        .table-sm td, .table-sm th {
+            padding: .25rem .5rem;
+            font-size: 0.78rem;
+        }
+
+        #estadoTexto {
+            font-weight: 600;
+        }
+
+        /* Loader tipo “espera SAP” (OCULTO por defecto) */
+        #loaderOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.75);
+            display: none; /* clave */
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #loaderBox {
+            background: white;
+            border-radius: .75rem;
+            padding: 20px 30px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .loader-spinner {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 4px solid #e0e0e0;
+            border-top-color: #0d6efd;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Botón logout corporativo */
+        .btn-spartan-logout {
+            background: #00527A;
+            color: #fff;
+            border: none;
+        }
+
+            .btn-spartan-logout:hover {
+                background: #003E5C;
+                color: #fff;
+            }
+
+        /* Firma tenue (ajustada a fondo claro) */
+        .powered {
+            position: fixed;
+            right: 14px;
+            bottom: 14px;
+            font-size: 11px;
+            color: rgba(0,0,0,.35);
+            user-select: none;
+            transition: color .2s ease;
+        }
+
+            .powered:hover {
+                color: rgba(0,0,0,.75);
+            }
+    </style>
+</head>
+
+<body>
+
+    <!-- Loader oculto por defecto -->
+    <div id="loaderOverlay" aria-hidden="true">
+        <div id="loaderBox">
+            <div class="loader-spinner"></div>
+            <div>
+                <div id="loaderText" class="fw-semibold">Cargando…</div>
+                <div class="small text-muted">Por favor espere, procesando información.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ENCABEZADO GENERAL -->
+    <header class="border-bottom bg-white mb-3">
+        <div class="container-fluid py-2 d-flex justify-content-between align-items-center">
+
+            <!-- ✅ BRAND CLICKABLE → Dashboard -->
+            <a href="ingreso.html"
+               class="d-flex align-items-center text-decoration-none text-dark"
+               title="Volver al Dashboard">
+
+                <img src="img/spartan-logo.png"
+                     alt="Spartan"
+                     class="logo-spartan" />
+
+                <div class="ms-2">
+                    <div class="fw-bold" style="font-size:20px;">
+                        Ventas – SPARTAN (SAP B1)
+                    </div>
+                    <div class="small text-muted">
+                        Portal interno de vendedores
+                    </div>
+                </div>
+
+            </a>
+
+            <!-- ✅ NAV REPORTES -->
+            <div class="nav-top d-flex gap-2 align-items-center">
+
+                <button type="button"
+                        class="btn btn-secondary nav-dashboard-btn"
+                        data-url="cargar_ventas.html">
+                    Cargar ventas
+                </button>
+
+                <button type="button"
+                        class="btn btn-secondary nav-dashboard-btn"
+                        data-url="ranking_ventas.html">
+                    Ranking ventas
+                </button>
+
+                <button type="button"
+                        class="btn btn-secondary nav-dashboard-btn"
+                        data-url="sabana_ventas.html">
+                    Sábana Ventas
+                </button>
+
+                <button type="button"
+                        class="btn btn-success nav-dashboard-btn"
+                        data-url="estado_pedidos.html">
+                    Estado Pedidos
+                </button>
+
+                <button type="button"
+                        class="btn btn-spartan-logout ms-2"
+                        onclick="logout()">
+                    Cerrar sesión
+                </button>
+
+            </div>
+
+        </div>
+    </header>
+
+
+    <main class="container-fluid" style="max-width: 1400px;">
+
+        <!-- Estado / usuario -->
+        <div class="card mb-3">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>Estado:</strong>
+                    <span id="estadoTexto" class="text-muted">No autenticado</span>
+                </div>
+                <div id="estadoUsuario" class="small text-muted"></div>
+            </div>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="card mb-3">
+            <div class="card-body row g-3 align-items-end">
+                <div class="col-sm-3">
+                    <label class="form-label">Desde</label>
+                    <input id="txtDesde" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">Hasta</label>
+                    <input id="txtHasta" type="date" class="form-control" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">Cliente (CardCode, opcional)</label>
+                    <input id="txtCardCode" class="form-control" />
+                </div>
+                <div class="col-sm-3 d-grid gap-2">
+                    <button class="btn btn-success" type="button" onclick="cargarEstado()">Cargar estado</button>
+                    <button id="btnExportar" class="btn btn-outline-primary btn-sm" type="button" onclick="exportarEstadoExcel()">
+                        Exportar estado a Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLA -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span>Estado de pedidos (detalle por documento)</span>
+                <span class="small text-muted">Facturas, guías de despacho, guías comodato y notas de venta</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 520px;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Documento</th>
+                                <th>Vendedor</th>
+                                <th>Fecha Contabilización</th>
+                                <th>Nº DTE</th>
+                                <th>Nombre Cliente</th>
+                                <th>Dir. Factura</th>
+                                <th>Ciudad Factura</th>
+                                <th>Descripción</th>
+                                <th class="text-end">Pedido Solicitado</th>
+                                <th class="text-end">Pedido Atrasado</th>
+                                <th class="text-end">Pedido Entregado</th>
+                                <th>Nº OT</th>
+                                <th>Fecha Despacho</th>
+                                <th>Transportista</th>
+                                <th>Indicador Despacho</th>
+                                <th>Estado Pedido</th>
+                                <th>Comentarios</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyEstadoPedidos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="powered">powered by MCF-2025</div>
+    </main>
+
+    <script>
+        /* =======================================
+           PROTEGER: si no hay token, volver al login
+        ======================================= */
+        (function () {
+            if (!localStorage.getItem("jwtToken")) {
+                window.location.href = "login.html";
+            }
+        })();
+
+        /* =======================================
+           NAVEGACIÓN TOP (data-url)
+        ======================================= */
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".nav-dashboard-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const url = btn.getAttribute("data-url");
+                    if (url) window.location.href = url;
+                });
+            });
+        });
+
+        /* =======================================
+           LOGOUT (AHORA SÍ FUNCIONA)
+        ======================================= */
+        function logout() {
+            localStorage.removeItem("jwtToken");
+            localStorage.removeItem("currentSlpCode");
+            localStorage.removeItem("currentRole");
+            localStorage.removeItem("currentAlias");
+            localStorage.removeItem("currentLogin");
+            localStorage.removeItem("currentPermisos");
+            window.location.href = "login.html";
+        }
+
+        let jwtToken = null;
+
+        function setEstado(texto, tipo = "muted") {
+            const span = document.getElementById("estadoTexto");
+            span.textContent = texto;
+            span.className = "";
+            span.classList.add("text-" + tipo);
+        }
+
+        function mostrarLoader(texto) {
+            const overlay = document.getElementById("loaderOverlay");
+            const txt = document.getElementById("loaderText");
+            if (txt && texto) txt.textContent = texto;
+            overlay.style.display = "flex";
+        }
+
+        function ocultarLoader() {
+            document.getElementById("loaderOverlay").style.display = "none";
+        }
+
+        // Init: cargar sesión y fechas por defecto
+        (function init() {
+            jwtToken = localStorage.getItem("jwtToken");
+
+            const alias = localStorage.getItem("currentAlias");
+            const role = localStorage.getItem("currentRole");
+            const login = localStorage.getItem("currentLogin");
+
+            if (jwtToken) {
+                setEstado("Autenticado correctamente", "success");
+                document.getElementById("estadoUsuario").textContent =
+                    `Usuario: ${login || alias || ""} – Rol: ${role || ""}`;
+            } else {
+                setEstado("No autenticado", "danger");
+                document.getElementById("estadoUsuario").textContent =
+                    "No se encontró sesión. Ingrese por login.html";
+            }
+
+            const hoy = new Date();
+            const year = hoy.getFullYear();
+            const month = hoy.getMonth() + 1;
+
+            const primerDia = `${year}-${String(month).padStart(2, "0")}-01`;
+            const ultimoDia = new Date(year, month, 0);
+            const lastStr = `${ultimoDia.getFullYear()}-${String(ultimoDia.getMonth() + 1).padStart(2, "0")}-${String(ultimoDia.getDate()).padStart(2, "0")}`;
+
+            document.getElementById("txtDesde").value = primerDia;
+            document.getElementById("txtHasta").value = lastStr;
+        })();
+
+        async function cargarEstado() {
+            if (!jwtToken) {
+                alert("Debe iniciar sesión primero (login.html).");
+                return;
+            }
+
+            const desde = document.getElementById("txtDesde").value;
+            const hasta = document.getElementById("txtHasta").value;
+            const cardCode = document.getElementById("txtCardCode").value.trim();
+
+            if (!desde || !hasta) {
+                setEstado("Debe seleccionar rango de fechas", "danger");
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.append("desde", desde);
+            params.append("hasta", hasta);
+            if (cardCode) params.append("cardCode", cardCode);
+
+            try {
+                mostrarLoader("Cargando estado de pedidos...");
+                const resp = await fetch("/api/Ventas/estado-pedidos?" + params.toString(), {
+                    headers: { "Authorization": "Bearer " + jwtToken }
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    setEstado("Error al cargar estado: " + msg, "danger");
+                    return;
+                }
+
+                const data = await resp.json();
+                setEstado(`Estado cargado (${data.length} filas)`, "success");
+                renderTablaEstado(data);
+            } catch (err) {
+                console.error(err);
+                setEstado("Error de conexión al cargar estado: " + err, "danger");
+            } finally {
+                ocultarLoader();
+            }
+        }
+
+        function renderTablaEstado(data) {
+            const tbody = document.getElementById("tbodyEstadoPedidos");
+            tbody.innerHTML = "";
+
+            if (!Array.isArray(data) || data.length === 0) return;
+
+            const c = (r, prop) => (r[prop] ?? "").toString();
+
+            data.forEach(r => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                            <td>${c(r, "DOCUMENTO")}</td>
+                            <td>${c(r, "VENDEDOR")}</td>
+                            <td>${c(r, "Fecha Contabilizacion")}</td>
+                            <td>${c(r, "Nº DTE") || c(r, "NroDTE") || c(r, "NroFolio")}</td>
+                            <td>${c(r, "Nombre Cliente")}</td>
+                            <td>${c(r, "U_GUIA_DIRFAC_CALLE")}</td>
+                            <td>${c(r, "U_GUIA_DIRFAC_CIUDAD")}</td>
+                            <td>${c(r, "Dscription")}</td>
+                            <td class="text-end">${c(r, "Pedido Solicitado")}</td>
+                            <td class="text-end">${c(r, "Pedido Atrasado")}</td>
+                            <td class="text-end">${c(r, "Pedido Entregado")}</td>
+                            <td>${c(r, "Numero OT")}</td>
+                            <td>${c(r, "Fecha Despacho")}</td>
+                            <td>${c(r, "Nombre_Transportista")}</td>
+                            <td>${c(r, "Indicador Despacho")}</td>
+                            <td>${c(r, "PEDIDO")}</td>
+                            <td>${c(r, "Comments")}</td>
+                        `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function exportarEstadoExcel() {
+            const desde = document.getElementById("txtDesde").value;
+            const hasta = document.getElementById("txtHasta").value;
+            const cardCode = document.getElementById("txtCardCode").value.trim();
+
+            if (!desde || !hasta) {
+                alert("Debe seleccionar el rango de fechas.");
+                return;
+            }
+
+            const token = localStorage.getItem("jwtToken");
+            if (!token) {
+                alert("Sesión expirada. Vuelva a ingresar.");
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.append("desde", desde);
+            params.append("hasta", hasta);
+            if (cardCode) params.append("cardCode", cardCode);
+
+            try {
+                mostrarLoader("Generando Excel de estado de pedidos...");
+
+                const resp = await fetch("/api/Ventas/estado-pedidos-excel?" + params.toString(), {
+                    method: "GET",
+                    headers: { "Authorization": "Bearer " + token }
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    alert("Error al generar Excel (" + resp.status + "): " + msg);
+                    return;
+                }
+
+                const blob = await resp.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "estado_pedidos.xlsx";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error(err);
+                alert("Error de conexión al generar Excel: " + err);
+            } finally {
+                ocultarLoader();
+            }
+        }
+    </script>
+</body>
+</html>

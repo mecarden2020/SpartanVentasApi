@@ -1,0 +1,541 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Ranking Gerencial – Químicos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f7f7f7;
+        }
+
+        .logo-spartan {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .card {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        #estadoTexto {
+            font-weight: 600;
+        }
+
+        .nav-top .btn {
+            min-width: 130px;
+            border-radius: 0;
+        }
+
+            .nav-top .btn + .btn {
+                margin-left: 4px;
+            }
+
+        .powered {
+            position: fixed;
+            right: 14px;
+            bottom: 146px;
+            font-size: 11px;
+            color: rgba(255,255,255,.35);
+            user-select: none;
+            transition: color .2s ease;
+        }
+
+            .powered:hover {
+                color: rgba(255,255,255,.75);
+            }
+    </style>
+</head>
+
+<body>
+    <!-- PROTECCIÓN: SOLO ADMIN / GERENCIA -->
+    <script>
+        (function () {
+            const token = localStorage.getItem("jwtToken") || localStorage.getItem("token");
+            const role = (localStorage.getItem("currentRole") || "").toUpperCase();
+
+            if (!token) { window.location.href = "login.html"; return; }
+            if (!(role === "ADMIN" || role === "GERENCIA")) {
+                alert("Acceso restringido a Gerencia");
+                window.location.href = "ingreso.html";
+                return;
+            }
+        })();
+    </script>
+
+    <!-- ENCABEZADO -->
+    <header class="border-bottom bg-white mb-3">
+        <div class="container-fluid py-2 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <img src="img/spartan-logo.png" alt="Spartan" class="logo-spartan" />
+                <div>
+                    <div class="fw-bold" style="font-size:20px;">Gerencia – SPARTAN (SAP B1)</div>
+                    <div class="small text-muted">Ranking gerencial (Químicos): Vendedores y Divisiones</div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <!-- Usuario conectado -->
+                <span id="lblUsuario" class="me-2 text-muted" style="font-size:.95rem;"></span>
+
+                <!-- Navegación gerencial -->
+                <a class="btn btn-success" href="ranking_gerencia.html">Ranking</a>
+                <a class="btn btn-success" href="gerencia_presupuesto_ventas.html">Gerencia</a>
+                <a class="btn btn-success" href="cierre_gerencia.html" id="btnCierres">Cierres</a>
+
+                <button class="btn btn-danger" id="btnLogout" type="button">🔒 Cerrar sesión</button>
+            </div>
+        </div>
+    </header>
+
+
+    <main class="container-fluid" style="max-width: 1600px;">
+        <!-- ESTADO -->
+        <div class="card mb-3">
+            <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
+                <div>
+                    <strong>Estado:</strong>
+                    <span id="estadoTexto" class="text-muted">Listo para cargar…</span>
+                </div>
+                <div id="estadoUsuario" class="small text-muted"></div>
+            </div>
+        </div>
+
+        <!-- ACCIONES -->
+        <div class="card mb-3">
+            <div class="card-body d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                <div class="small text-muted">
+                    Este tablero considera <strong>solo Químicos</strong> y metas del mes en curso.
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success" onclick="cargarRanking()">Cargar Ranking</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4 cards KPI + Selector de periodo -->
+        <div class="card mb-3">
+            <div class="card-body d-flex flex-wrap gap-3 align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label mb-0"><strong>Período</strong></label>
+                    <select id="ddlPeriodo" class="form-select form-select-sm" style="width:220px;" onchange="cargarRanking()">
+                        <option value="mes" selected>Mes actual (acumulado)</option>
+                        <option value="mesAnterior">Mes anterior (completo)</option>
+                        <option value="ytd">Año a la fecha (YTD)</option>
+                    </select>
+                </div>
+
+                <div class="row g-2 w-100" style="max-width: 1100px;">
+                    <div class="col-6 col-md-3">
+                        <div class="card">
+                            <div class="card-body py-2">
+                                <div class="small text-muted">Neto total</div>
+                                <div class="fs-5 fw-bold" id="kpiNeto">$ 0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card">
+                            <div class="card-body py-2">
+                                <div class="small text-muted">Meta total</div>
+                                <div class="fs-5 fw-bold" id="kpiMeta">$ 0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card">
+                            <div class="card-body py-2">
+                                <div class="small text-muted">% Cumplimiento</div>
+                                <div class="fs-5 fw-bold" id="kpiPct">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card">
+                            <div class="card-body py-2">
+                                <div class="small text-muted">Faltante</div>
+                                <div class="fs-5 fw-bold" id="kpiFaltante">$ 0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+
+        <!-- GRAF 1: RANKING VENDEDORES -->
+        <div class="card mb-3">
+            <div class="card-header">Ranking vendedores (Químicos) – Neto real vs Meta</div>
+            <div class="card-body">
+                <canvas id="chartRankingVendedores" height="180"></canvas>
+            </div>
+        </div>
+
+        <!-- GRAF 2: DIVISIONES -->
+        <div class="card mb-3">
+            <div class="card-header">Avance por división (Químicos) – Neto real vs Meta</div>
+            <div class="card-body">
+                <canvas id="chartRankingDivisiones" height="140"></canvas>
+            </div>
+        </div>
+        <!-- -----------------------------------------------------------------------------  -->
+        <div class="card mb-3">
+            <div class="card-header">Ranking por zona (Químicos) – Neto real (mes en curso)</div>
+            <div class="card-body">
+                <canvas id="chartZona" height="110"></canvas>
+            </div>
+        </div>
+
+
+
+        <div class="powered">powered by MCF-2025</div>
+    </main>
+
+    <script>
+        // ===== Utilidades UI helpers JS =====
+        function setEstado(texto) {
+            const el = document.getElementById("estadoTexto");
+            if (el) el.innerText = texto;
+            console.log("Estado:", texto);
+        }
+
+        function fmtCL(n) {
+            const v = Number(n || 0);
+            return v.toLocaleString("es-CL");
+        }
+
+        function moneyCL(v) {
+            return "$ " + Number(v || 0).toLocaleString("es-CL");
+        }
+
+
+        // ===== Charts =====
+        let chartVend = null;
+        let chartDiv = null;
+        let chartZona = null;
+
+
+        function destruirCharts() {
+            if (chartVend) { chartVend.destroy(); chartVend = null; }
+            if (chartDiv) { chartDiv.destroy(); chartDiv = null; }
+            if (chartZona) { chartZona.destroy(); chartZona = null; } // ✅ nuevo
+        }
+
+        //==========================================================
+        function renderRankingZona(rows) {
+            // Orden fijo: Norte, Centro, Sur (más “gerencial”)
+            const orden = ["Norte", "Centro", "Sur"];
+            rows = Array.isArray(rows) ? rows.slice() : [];
+            rows.sort((a, b) => orden.indexOf(a.Zona) - orden.indexOf(b.Zona));
+
+            const labels = rows.map(x => x.Zona);
+            const data = rows.map(x => Number(x.Neto_Real || 0));
+
+            const ctx = document.getElementById("chartZona").getContext("2d");
+            if (chartZona) chartZona.destroy();
+
+            chartZona = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels,
+                    datasets: [{
+                        label: "Ventas netas Químicos",
+                        data,
+                        barThickness: 14,      // 👈 grosor fijo (prueba 12–16)
+                        maxBarThickness: 16    // 👈 seguridad visual
+                    }]
+                },
+                options: {
+                    indexAxis: "y",
+                    responsive: true,
+                    plugins: {
+                        legend: { display: true },
+                        tooltip: {
+                            callbacks: {
+                                label: (c) => " $ " + Number(c.raw || 0).toLocaleString("es-CL")
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                callback: (v) => Number(v).toLocaleString("es-CL")
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+
+        // ===== Carga principal =====
+        async function cargarRanking() {
+            try {
+                setEstado("Cargando ranking…");
+
+                const token = localStorage.getItem("token") || localStorage.getItem("jwtToken");
+                if (!token) {
+                    setEstado("Sesión expirada. Redirigiendo a login…");
+                    window.location.href = "login.html";
+                    return;
+                }
+                const periodo = document.getElementById("ddlPeriodo")?.value || "mes";
+
+                destruirCharts();
+
+                // ✅ KPI primero (para contexto)
+                await cargarKpi(periodo, token);
+
+                // 1) fetch Ranking vendedores
+                const urlVend = "/api/gerencia/quimicos-ranking-vendedores-mes";
+                const r1 = await fetch(urlVend, { headers: { Authorization: `Bearer ${token}` } });
+                const t1 = await r1.text();
+                if (!r1.ok) throw new Error(`Error Vendedores (${r1.status}): ${t1.substring(0, 200)}`);
+                const vendedores = JSON.parse(t1);
+
+                // 2) fetch Divisiones
+                const urlDiv = "/api/gerencia/quimicos-divisiones-mes";
+                const r2 = await fetch(urlDiv, { headers: { Authorization: `Bearer ${token}` } });
+                const t2 = await r2.text();
+                if (!r2.ok) throw new Error(`Error Divisiones (${r2.status}): ${t2.substring(0, 200)}`);
+                const divisiones = JSON.parse(t2);
+
+                // 3) fetch Zonas (Norte/Centro/Sur)
+                const urlZona = "/api/gerencia/ranking-zona-quimicos-mes";
+                const r3 = await fetch(urlZona, { headers: { Authorization: `Bearer ${token}` } });
+                const t3 = await r3.text();
+                if (!r3.ok) throw new Error(`Error Zonas (${r3.status}): ${t3.substring(0, 200)}`);
+                const zonas = JSON.parse(t3);
+
+                // Render
+                renderRankingVendedores(vendedores);
+                renderRankingDivisiones(divisiones);
+                renderRankingZona(zonas);
+
+                setEstado("Ranking cargado ✅");
+            } catch (err) {
+                console.error(err);
+                setEstado("Error al cargar ranking: " + (err?.message || err));
+            }
+        }
+
+
+        async function cargarKpi(periodo, token) {
+            const r = await fetch(`/api/gerencia/kpi-quimicos-resumen?periodo=${encodeURIComponent(periodo)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const txt = await r.text();
+            if (!r.ok) throw new Error(`Error KPI (${r.status}): ${txt.substring(0, 200)}`);
+
+            const kpi = JSON.parse(txt);
+            document.getElementById("kpiNeto").innerText = moneyCL(kpi.netoTotal);
+            document.getElementById("kpiMeta").innerText = moneyCL(kpi.metaTotal);
+            document.getElementById("kpiPct").innerText = Number(kpi.cumplimientoPct || 0).toFixed(2) + "%";
+            document.getElementById("kpiFaltante").innerText = moneyCL(kpi.faltante);
+        }
+
+
+
+
+        // ===== Render: Ranking Vendedores =====
+        function renderRankingVendedores(rows) {
+            const labels = rows.map(r => r.Vendedor ?? r.vendedor ?? "");
+            const vendido = rows.map(r => Number(r.Neto_Real ?? r.neto_Real ?? 0));
+            const meta = rows.map(r => Number(r.Meta_Mes ?? r.meta_Mes ?? 0));
+            const faltante = rows.map(r => Number(r.Faltante ?? r.faltante ?? 0));
+            const pct = rows.map(r => Number(r.Cumplimiento_Pct ?? r.cumplimiento_Pct ?? 0));
+            const color = rows.map(r => (r.Color ?? r.color ?? "#6c757d"));
+
+            const ctx = document.getElementById("chartRankingVendedores").getContext("2d");
+            chartVend = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels,
+                    datasets: [{
+                        label: "Vendido (Neto real)",
+                        data: vendido,
+                        backgroundColor: color,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: "y",
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (c) => {
+                                    const i = c.dataIndex;
+                                    return [
+                                        `Vendido: ${fmtCL(vendido[i])}`,
+                                        `Meta: ${fmtCL(meta[i])}`,
+                                        `Faltante: ${fmtCL(faltante[i])}`,
+                                        `Cumplimiento: ${(pct[i] || 0).toFixed(2)}%`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { callback: (v) => Number(v).toLocaleString("es-CL") }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ===== Render: Divisiones =====
+        function renderRankingDivisiones(rows) {
+            const labels = rows.map(r => r.Division ?? r.division ?? "");
+            const vendido = rows.map(r => Number(r.Neto_Real_Div ?? r.neto_Real_Div ?? 0));
+            const meta = rows.map(r => Number(r.Meta_Mes_Div ?? r.meta_Mes_Div ?? 0));
+            const faltante = rows.map(r => Number(r.Faltante_Div ?? r.faltante_Div ?? 0));
+            const pct = rows.map(r => Number(r.Cumplimiento_Pct_Div ?? r.cumplimiento_Pct_Div ?? 0));
+            const color = rows.map(r => (r.Color ?? r.color ?? "#6c757d"));
+
+            const ctx = document.getElementById("chartRankingDivisiones").getContext("2d");
+            chartDiv = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels,
+                    datasets: [{
+                        label: "Vendido (Neto real)",
+                        data: vendido,
+                        backgroundColor: color,
+                        barThickness: 14,
+                        maxBarThickness: 16,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: "y",
+                    responsive: true,
+                    categoryPercentage: 0.8,  // espacio entre categorías
+                    barPercentage: 0.8,
+
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (c) => {
+                                    const i = c.dataIndex;
+                                    return [
+                                        `Vendido: ${fmtCL(vendido[i])}`,
+                                        `Meta: ${fmtCL(meta[i])}`,
+                                        `Faltante: ${fmtCL(faltante[i])}`,
+                                        `Cumplimiento: ${(pct[i] || 0).toFixed(2)}%`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { callback: (v) => Number(v).toLocaleString("es-CL") }
+                        }
+                    }
+                }
+            });
+        }
+        //============================================================================
+        function renderChartZona(rows) {
+            const labels = rows.map(x => x.Zona);
+            const data = rows.map(x => Number(x.Neto_Real || 0));
+
+            const ctx = document.getElementById("chartZona").getContext("2d");
+            if (chartZona) chartZona.destroy();
+
+            chartZona = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels,
+                    datasets: [{
+                        label: "Ventas netas (Químicos)",
+                        data
+                    }]
+                },
+                options: {
+                    indexAxis: "y",
+                    responsive: true,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (c) => " $ " + (Number(c.raw || 0)).toLocaleString("es-CL")
+                            }
+                        },
+                        legend: { display: true }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                callback: (v) => Number(v).toLocaleString("es-CL")
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+
+
+        // ===== Navbar: mostrar/ocultar según rol + navegación =====
+        (function () {
+            const role = (localStorage.getItem("currentRole") || "").toUpperCase();
+
+            const btnCargar = document.getElementById("btnCargarVentas");
+            const btnRankV = document.getElementById("btnRankingVentas");
+            const btnSabana = document.getElementById("btnSabanaVentas");
+            const btnPedidos = document.getElementById("btnEstadoPedidos");
+
+            const btnRankG = document.getElementById("btnRankingGerencia");
+
+            // Gerencia/Admin: ocultar botones operativos y mostrar Ranking
+            if (role === "GERENCIA" || role === "ADMIN") {
+                if (btnCargar) btnCargar.style.display = "none";
+                if (btnRankV) btnRankV.style.display = "none";
+                if (btnSabana) btnSabana.style.display = "none";
+                if (btnPedidos) btnPedidos.style.display = "none";
+                if (btnRankG) btnRankG.style.display = "";
+            }
+
+            // Navegación por data-url
+            document.addEventListener("click", (e) => {
+                const btn = e.target.closest(".nav-dashboard-btn");
+                if (!btn) return;
+                const url = btn.getAttribute("data-url");
+                if (url) window.location.href = url;
+            });
+        })();
+
+        // ===== Logout =====
+        function logout() {
+            try {
+                console.log("Cerrando sesión...");
+                localStorage.removeItem("token");
+                localStorage.removeItem("jwtToken");
+                localStorage.removeItem("currentRole");
+                localStorage.removeItem("usuario");
+                sessionStorage.clear();
+                window.location.href = "login.html";
+            } catch (e) {
+                console.error("Error al cerrar sesión", e);
+                window.location.href = "login.html";
+            }
+        }
+    </script>
+    <script src="/js/auth-header.js" defer></script>
+
+
+</body>
+</html>

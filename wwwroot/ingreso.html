@@ -1,0 +1,1564 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Dashboard Ventas – SPARTAN (SAP B1)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f7f7f7;
+        }
+
+        header {
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .card {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        #estadoTexto {
+            font-weight: 600;
+        }
+
+        .btn-spartan-logout {
+            background: #0d6efd;
+            color: #fff;
+            border: 0;
+        }
+
+            .btn-spartan-logout:hover {
+                filter: brightness(0.92);
+            }
+
+        .powered {
+            position: fixed;
+            right: 14px;
+            bottom: 146px;
+            font-size: 11px;
+            color: rgba(0,0,0,.25);
+            user-select: none;
+            transition: color .2s ease;
+        }
+
+            .powered:hover {
+                color: rgba(0,0,0,.55);
+            }
+
+        /* Layout superior: Donas + Cierres */
+        .top-row {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            flex-wrap: nowrap;
+            margin-bottom: 14px;
+        }
+
+        .donuts-row {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            flex-wrap: nowrap;
+            min-width: 330px;
+        }
+
+        .donut-box {
+            width: 110px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #donutQuimicos, #donutMaquinas, #donutAccesorios {
+            position: relative;
+            z-index: 2;
+            pointer-events: auto;
+        }
+
+        #tipQuimicos, #tipMaquinas, #tipAccesorios {
+            position: relative;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .cierres-zone {
+            flex: 1 1 auto;
+            min-width: 520px;
+        }
+
+        /* Cierres (Semana / Mes) */
+        .cierres-wrap {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .cierre-box {
+            flex: 1 1 320px;
+            min-width: 320px;
+            background: #fff;
+            border: 1px solid rgba(0,82,122,.18);
+            border-radius: 12px;
+            padding: 10px 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        .cierre-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .cierre-badge {
+            background: #00527A;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 13px;
+            line-height: 1;
+            border: 0;
+        }
+
+        .btn-like {
+            border: 0;
+            cursor: pointer;
+        }
+
+            .btn-like:hover {
+                filter: brightness(0.95);
+            }
+
+        .cierre-meta {
+            font-size: 12px;
+            color: #6c757d;
+            text-align: right;
+        }
+
+        .cierre-cards {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .cierre-card {
+            min-width: 150px;
+            border: 1px solid rgba(0,82,122,.18);
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: #fbfdff;
+        }
+
+            .cierre-card .lbl {
+                font-size: 12px;
+                color: #6c757d;
+                margin-bottom: 2px;
+            }
+
+            .cierre-card .val {
+                font-size: 16px;
+                font-weight: 800;
+                color: #00527A;
+            }
+
+        .cierre-foot {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .d-none {
+            display: none !important;
+        }
+
+        .cierre-mensual-grid {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+            flex-wrap: wrap;
+        }
+
+            .cierre-mensual-grid .cierre-cards {
+                flex: 1 1 260px;
+                margin: 0;
+            }
+
+        /* Responsive */
+        @media (max-width:1100px) {
+            .top-row {
+                flex-wrap: wrap;
+            }
+
+            .donuts-row {
+                flex-wrap: wrap;
+            }
+
+            .cierres-zone {
+                min-width: 100%;
+            }
+        }
+        .donut-tooltip {
+            position: fixed;
+            z-index: 9999;
+            background: rgba(17,17,17,.95);
+            color: #fff;
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            line-height: 1.25;
+            pointer-events: none;
+            width: 240px; /* ✅ fijo, se lee mejor */
+            box-shadow: 0 10px 24px rgba(0,0,0,.25);
+        }
+
+            .donut-tooltip .t-title {
+                font-weight: 700;
+                margin-bottom: 4px;
+            }
+
+            .donut-tooltip .t-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+            }
+
+            .donut-tooltip .t-val {
+                font-weight: 600;
+            }
+
+        .donut-box canvas {
+            display: block !important;
+            width: 80px !important;
+            height: 80px !important;
+        }
+
+        .donuts-row {
+            min-width: 240px; /* para 2 donas */
+        }
+
+        .donut-box {
+            width: 110px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .donut-mini {
+            font-size: 11px;
+            line-height: 1.15;
+            color: #6c757d;
+            width: 120px; /* ajusta si quieres */
+        }
+
+            .donut-mini .rowx {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+            }
+
+            .donut-mini .lbl {
+                opacity: .95;
+            }
+
+            .donut-mini .val {
+                font-weight: 600;
+                color: #212529;
+            }
+
+            .donut-mini .pct {
+                margin-top: 4px;
+                font-weight: 800;
+                text-align: center;
+            }
+
+
+        
+    </style>
+</head>
+
+<body>
+    <header>
+        <img src="img/spartan-logo.png" alt="Spartan" style="height:48px;">
+        <div>
+            <div style="font-size:20px;font-weight:bold;">Ventas – SPARTAN (SAP B1)</div>
+            <div style="font-size:12px;color:#555;">Portal interno de vendedores</div>
+        </div>
+
+        <div class="ms-auto d-flex gap-2">
+            <button type="button" class="btn btn-success btn-sm nav-dashboard-btn" data-url="cargar_ventas.html" disabled>Cargar ventas</button>
+            <button type="button" class="btn btn-secondary btn-sm nav-dashboard-btn" data-url="ranking_ventas.html" disabled>Ranking ventas</button>
+            <button type="button" class="btn btn-secondary btn-sm nav-dashboard-btn" data-url="sabana_ventas.html" disabled>Sabana Ventas</button>
+            <button type="button" class="btn btn-secondary btn-sm nav-dashboard-btn" data-url="estado_pedidos.html" disabled>Estado Pedidos</button>
+            <button id="btnLogout" type="button" class="btn btn-spartan-logout ms-2">Cerrar sesión</button>
+        </div>
+    </header>
+
+    <!-- Navbar compartida -->
+    <div id="navbarContainer"></div>
+
+    <main style="padding:20px;">
+        <!-- Barra estado usuario -->
+        <div class="card mb-3">
+            <div class="card-body d-flex align-items-center gap-2">
+                <img id="authAvatar" width="40" height="40"
+                     style="display:none;border-radius:50%;object-fit:cover;">
+                <div id="authStatusText" class="fw-semibold">
+                    Estado: —
+                </div>
+            </div>
+
+            <div class="card-body d-flex justify-content-between align-items-center pt-0">
+                <div>
+                    <strong>Estado técnico:</strong>
+                    <span id="estadoTexto" class="text-muted">
+                        Verificando autenticación…
+                    </span>
+                </div>
+                <div id="estadoUsuario" class="small text-muted"></div>
+            </div>
+        </div>
+
+        <!-- ===== FILA SUPERIOR: Donas + Cierres ===== -->
+        <div class="top-row">
+
+            <!-- Donas (izquierda) -->
+            <div class="donuts-row">
+
+                <!-- Dona MIX: 3 categorías -->
+                <div class="donut-box">
+                    <div style="font-size:12px">Mix (Mes)</div>
+                    <canvas id="donutMix" width="80" height="80"></canvas>
+                    <div id="tipMix" class="small text-muted mt-1" style="min-height:16px;"></div>
+                </div>
+
+                <!-- Dona Químicos: Meta vs Vendido -->
+                <div class="donut-box">
+                    <div style="font-size:12px">Químicos (Meta)</div>
+                    <canvas id="donutQuimicos" width="80" height="80"></canvas>
+                    <div id="tipQuimicos" class="donut-mini mt-1"></div>
+                    <!-- <div id="tipQuimicos" class="small text-muted mt-1" style="min-height:16px;"></div> -->
+                </div>
+
+            </div>
+
+
+            <!-- Cierres (derecha) -->
+            <div class="cierres-zone">
+                <div class="cierres-wrap">
+
+                    <!-- Cierre semanal -->
+                    <div id="boxCierreSemana" class="cierre-box d-none">
+                        <div class="cierre-head">
+                            <div class="cierre-badge" id="lblCierreSemana">Cierre Semana</div>
+                            <div class="cierre-meta" id="metaCierreSemana">—</div>
+                        </div>
+
+                        <div class="cierre-cards">
+                            <div class="cierre-card">
+                                <div class="lbl">Factura</div>
+                                <div class="val" id="csFactura">$0</div>
+                            </div>
+                            <div class="cierre-card">
+                                <div class="lbl">Pedido</div>
+                                <div class="val" id="csPedido">$0</div>
+                            </div>
+                            <div class="cierre-card">
+                                <div class="lbl">Entrega</div>
+                                <div class="val" id="csEntrega">$0</div>
+                            </div>
+                            <div class="cierre-card">
+                                <div class="lbl">Total</div>
+                                <div class="val" id="csTotal">$0</div>
+                            </div>
+                        </div>
+
+                        <div class="cierre-foot" id="footCierreSemana">—</div>
+                    </div>
+
+                    <!-- Cierre mensual -->
+                    <div id="boxCierreMensual" class="cierre-box d-none" style="max-width:760px;">
+                        <div class="cierre-head">
+                            <button type="button" class="cierre-badge btn-like" id="btnCierreMensual" title="Actualizar cierre mensual">
+                                Cierre Mensual
+                            </button>
+                            <div class="cierre-meta" id="metaCierreMensual">—</div>
+                        </div>
+
+                        <div class="cierre-mensual-grid">
+                            <div class="cierre-cards">
+                                <div class="cierre-card">
+                                    <div class="lbl">Químicos</div>
+                                    <div class="val" id="cmQuimicos">$0</div>
+                                </div>
+                                <div class="cierre-card">
+                                    <div class="lbl">Accesorios</div>
+                                    <div class="val" id="cmAccesorios">$0</div>
+                                </div>
+                                <div class="cierre-card">
+                                    <div class="lbl">Máquinas</div>
+                                    <div class="val" id="cmMaquinas">$0</div>
+                                </div>
+                                <div class="cierre-card">
+                                    <div class="lbl">Repuestos Máq.</div>
+                                    <div class="val" id="cmRepuestos">$0</div>
+                                </div>
+                                <div class="cierre-card">
+                                    <div class="lbl">Serv. Técnico</div>
+                                    <div class="val" id="cmServicio">$0</div>
+                                </div>
+                                <div class="cierre-card">
+                                    <div class="lbl">Total</div>
+                                    <div class="val" id="cmTotal">$0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Controles -->
+        <div class="card mb-3">
+            <div class="card-body row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Rango de análisis</label>
+                    <input id="txtHasta" type="month" class="form-control" />
+                    <div class="form-text">Se usarán los últimos 12 meses hasta el mes seleccionado.</div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Cliente (CardCode, opcional)</label>
+                    <input id="txtCardCode" class="form-control" />
+                    <div class="form-text">Dejar vacío para todos los clientes.</div>
+                </div>
+
+                <div class="col-md-3 d-grid">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-success" onclick="cargarDashboard()">Cargar dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">Ventas netas por mes (últimos 12 meses) QUIMICOS</div>
+                    <div class="card-body">
+                        <canvas id="chartVentasMes" height="120"></canvas>
+                        <div id="resumenVentasMes" class="small text-muted mt-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">Top 5 clientes con compras en cada uno de los últimos 3 meses</div>
+                    <div class="card-body">
+                        <canvas id="chartTopActivos" height="120"></canvas>
+                        <div id="resumenTopActivos" class="small text-muted mt-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">Top 5 clientes que NO compraron en los últimos 3 meses</div>
+                    <div class="card-body">
+                        <canvas id="chartTopInactivos" height="120"></canvas>
+                        <div id="resumenTopInactivos" class="small text-muted mt-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">Resumen rápido</div>
+                    <div class="card-body">
+                        <ul id="listaResumen" class="list-unstyled mb-0"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="powered">powered by MCF-2025</div>
+    </main>
+
+    <!-- ✅ JS común -->
+    <script src="/js/session-ui.js"></script>
+
+    <!-- ✅ Auth helper -->
+    <script src="/js/auth-header.js"></script>
+
+    <!-- ✅ Navbar loader + foto por usuario -->
+    <script>
+        fetch("/shared/navbar.html")
+            .then(r => r.text())
+            .then(async html => {
+                document.getElementById("navbarContainer").innerHTML = html;
+
+                // 👇 clave para que NO se pegue la foto entre usuarios
+                if (typeof syncPhotoForCurrentUser === "function") {
+                    await syncPhotoForCurrentUser();
+                }
+                if (typeof paintNavbarUser === "function") {
+                    paintNavbarUser();
+                }
+            });
+    </script>
+
+    <script>
+        // ================== GUARDIA DE ROL (VENDEDORES) ==================
+        (function guardIngresoVendedor() {
+            const jwt = (localStorage.getItem("jwtToken") || localStorage.getItem("token") || "").trim();
+            const urlToken = new URLSearchParams(window.location.search).get("token");
+
+            // ✅ Si vienes por magic-link, aún no hay JWT guardado: NO redirijas
+            if (!jwt && urlToken) return;
+
+            // ❌ Si no hay JWT y no hay token por URL, sí manda a login
+            if (!jwt) {
+                window.location.replace("login.html");
+                return;
+            }
+
+            const role = (localStorage.getItem("currentRole") || "").toUpperCase();
+            if (role === "GERENCIA" || role === "ADMIN") {
+                window.location.replace("gerencia_presupuesto_ventas.html");
+                return;
+            }
+        })();
+
+        // ===============================
+        // Fetch con timeout (ANTI-PENDING)
+        // ===============================
+        async function fetchWithTimeout(url, ms = 15000, options = {}) {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), ms);
+            try {
+                return await fetch(url, { ...options, signal: ctrl.signal });
+            } finally {
+                clearTimeout(t);
+            }
+        }
+
+        // ===== Config =====
+        const API_BASE = ""; // "" si es mismo dominio
+
+        function getParam(name) {
+            const u = new URL(window.location.href);
+            return u.searchParams.get(name);
+        }
+
+        // ✅ Guardar sesión (y cachear foto POR LOGIN)
+        function saveAuthSession(data) {
+            if (data?.token) {
+                localStorage.setItem("jwtToken", data.token);
+                localStorage.setItem("token", data.token); // compat
+            }
+
+            localStorage.setItem("currentSlpCode", (data.slpCode ?? "").toString());
+            localStorage.setItem("currentLogin", data.login ?? "");
+            localStorage.setItem("currentAlias", data.username ?? "");
+            localStorage.setItem("currentRole", data.role ?? "VENDEDOR");
+            localStorage.setItem("currentPermisos", JSON.stringify(data.permisos ?? []));
+
+            // ✅ Cache por usuario (esto evita “foto pegada”)
+            const login = (data.login ?? "").trim().toLowerCase();
+            if (login && typeof setCachedPhoto === "function") {
+                setCachedPhoto(login, data.photoUrl ?? "");
+            }
+
+            // (Opcional compat)
+            localStorage.setItem("currentPhotoUrl", data.photoUrl ?? "");
+            localStorage.setItem("photoUrl", data.photoUrl ?? "");
+
+            // keys antiguas (compat)
+            localStorage.setItem("slpCode", (data.slpCode ?? "").toString());
+            localStorage.setItem("login", data.login ?? "");
+            localStorage.setItem("username", data.username ?? "");
+            localStorage.setItem("role", data.role ?? "VENDEDOR");
+            localStorage.setItem("permisos", JSON.stringify(data.permisos ?? []));
+        }
+
+        async function magicLinkBootstrap() {
+            const magicToken = getParam("token");
+            if (!magicToken) return false;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/magic-link?token=${encodeURIComponent(magicToken)}`, {
+                    method: "GET",
+                    headers: { "Accept": "application/json" }
+                });
+
+                if (!res.ok) throw new Error("MagicLink inválido");
+
+                const data = await res.json();
+                if (!data?.token) throw new Error("Respuesta sin JWT");
+
+                saveAuthSession(data);
+
+                // limpiar token de URL
+                const url = new URL(window.location.href);
+                url.searchParams.delete("token");
+                window.history.replaceState({}, document.title, url.toString());
+
+                return true;
+            } catch (e) {
+                console.error("MagicLink error:", e);
+
+                // si no hay sesión, manda a login
+                const jwt = localStorage.getItem("jwtToken") || localStorage.getItem("token");
+                if (!jwt) {
+                    alert("Link inválido o expirado. Inicia sesión.");
+                    window.location.href = "login.html";
+                    return false;
+                }
+
+                // si ya hay sesión, solo limpia URL y continúa
+                const url = new URL(window.location.href);
+                url.searchParams.delete("token");
+                window.history.replaceState({}, document.title, url.toString());
+                return true;
+            }
+        }
+
+        function ensureLoggedInOrRedirect() {
+            const jwt = localStorage.getItem("jwtToken") || localStorage.getItem("token");
+            if (!jwt) {
+                window.location.href = "login.html";
+                return false;
+            }
+            return true;
+        }
+
+        /* ============================================================
+           AUTH / ESTADO
+        ============================================================ */
+        let jwtToken = null;
+        let currentSlpCode = null;
+        let currentRole = null;
+        let currentAlias = null;
+        let currentLogin = null;
+        let currentPermisos = [];
+        let datosPeriodo = [];
+        let dashboardReady = false;
+
+        function setEstado(texto, tipo = "muted") {
+            const span = document.getElementById("estadoTexto");
+            span.textContent = texto;
+            span.className = "";
+            span.classList.add("text-" + tipo);
+        }
+
+        function setNavEnabled(enabled) {
+            const btns = document.querySelectorAll(".nav-dashboard-btn");
+            btns.forEach(b => b.disabled = !enabled);
+            dashboardReady = enabled;
+        }
+
+        function irNav(btn) {
+            if (!dashboardReady) return;
+            const url = btn.getAttribute("data-url");
+            if (url) window.location.href = url;
+        }
+
+        document.addEventListener("click", function (e) {
+            if (e.target.classList.contains("nav-dashboard-btn")) {
+                e.preventDefault();
+                irNav(e.target);
+            }
+        });
+
+        function initAuthOrRedirect() {
+            const token = (localStorage.getItem("jwtToken") || localStorage.getItem("token") || "").trim();
+            const urlToken = new URLSearchParams(window.location.search).get("token");
+
+            if (!token) {
+                if (urlToken) {
+                    setEstado("Verificando autenticación...", "info");
+                    return false;
+                }
+                window.location.href = "login.html";
+                return false;
+            }
+
+            jwtToken = token;
+            currentSlpCode = localStorage.getItem("currentSlpCode") || null;
+            currentRole = localStorage.getItem("currentRole") || "";
+            currentAlias = localStorage.getItem("currentAlias") || "";
+            currentLogin = localStorage.getItem("currentLogin") || "";
+
+            const permisosStr = localStorage.getItem("currentPermisos");
+            currentPermisos = permisosStr ? JSON.parse(permisosStr) : [];
+
+            setEstado("Autenticado correctamente", "success");
+
+            const el = document.getElementById("estadoUsuario");
+            if (el) {
+                el.textContent = `Usuario: ${currentLogin} (alias: ${currentAlias}) – Rol: ${currentRole}`;
+            }
+
+            return true;
+        }
+
+            /* ============================================================
+               UTIL
+            ============================================================ */
+        function formatMoney(n) {
+            return Number(n || 0).toLocaleString("es-CL", {
+                style: "currency",
+                currency: "CLP",
+                maximumFractionDigits: 0
+            });
+        }
+
+        /* ============================================================
+           HELPERS FECHA DASHBOARD
+        ============================================================ */
+        function obtenerRangoMesSeleccionado() {
+
+            const ym = (document.getElementById("txtHasta")?.value || "").trim();
+            if (!ym || !ym.includes("-")) return null;
+
+            const [y, m] = ym.split("-").map(Number);
+
+            const desde = new Date(y, m - 1, 1);
+            const hasta = new Date(y, m, 0);
+
+            const pad = (v) => String(v).padStart(2, "0");
+
+            return {
+                desde: `${desde.getFullYear()}-${pad(desde.getMonth() + 1)}-${pad(desde.getDate())}`,
+                hasta: `${hasta.getFullYear()}-${pad(hasta.getMonth() + 1)}-${pad(hasta.getDate())}`
+            };
+        }
+
+
+
+
+
+
+        /* ============================================================
+           Chart.js - Plugin texto centro
+        ============================================================ */
+        const centerTextPlugin = {
+            id: "centerTextPlugin",
+            afterDraw(chart) {
+                const { ctx, chartArea } = chart;
+                if (!chartArea) return;
+
+                const opt = chart?.config?.options?.plugins?.centerText;
+                if (!opt || !opt.text) return;
+
+                const x = (chartArea.left + chartArea.right) / 2;
+                const y = (chartArea.top + chartArea.bottom) / 2;
+
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+
+                ctx.font = "bold 14px Arial";
+                ctx.fillStyle = opt.color || "#212529";
+                ctx.fillText(opt.text, x, y - (opt.subtext ? 6 : 0));
+
+                if (opt.subtext) {
+                    ctx.font = "11px Arial";
+                    ctx.fillStyle = opt.subcolor || "#6c757d";
+                    ctx.fillText(opt.subtext, x, y + 10);
+                }
+                ctx.restore();
+            }
+        };
+        Chart.register(centerTextPlugin);
+
+
+
+        // ============================================================
+        // DONAS (NUEVO: 1) MIX 3 segmentos + 2) META QUIMICOS)
+        // Endpoint: /api/dashboard/ventas-acct-resumen?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+        // ============================================================
+
+        let chartMix = null;   // dona 3 segmentos (Químicos/Máquinas/Accesorios)
+        let chartQ = null;     // dona meta químicos (Vendido/Faltante)
+        let chartQMeta = null; // ✅ dona químicos meta
+        // helper: buscar neto por acctCode en data[]
+        function getNeto(dataArr, acctCode) {
+            if (!Array.isArray(dataArr)) return 0;
+            const row = dataArr.find(x => String(x.acctCode) === String(acctCode));
+            return Number(row?.neto || 0);
+        }
+
+        function externalDonutTooltipHandler(context) {
+            const { chart, tooltip } = context;
+            const el = document.getElementById("donutTooltip");
+            if (!el) return;
+
+            // Ocultar
+            if (!tooltip || tooltip.opacity === 0) {
+                el.style.display = "none";
+                return;
+            }
+
+            const title = tooltip.title?.[0] ?? "";
+            const lines = tooltip.body?.map(b => b.lines).flat() ?? [];
+
+            let html = "";
+            if (title) html += `<div class="t-title">${title}</div>`;
+            for (const ln of lines) {
+                const parts = ln.split(":");
+                const k = (parts[0] ?? "").trim();
+                const v = (parts.slice(1).join(":") ?? "").trim();
+                html += `<div class="t-row"><div>${k}</div><div class="t-val">${v}</div></div>`;
+            }
+            el.innerHTML = html;
+
+            // Mostrar primero para medir tamaño
+            el.style.display = "block";
+            const tipRect = el.getBoundingClientRect();
+
+            // Referencia canvas + caret
+            const rect = chart.canvas.getBoundingClientRect();
+            const cx = rect.left + tooltip.caretX;
+            const cy = rect.top + tooltip.caretY;
+
+            // ✅ Colocación inteligente (si está arriba, baja; si está abajo, sube)
+            const offset = 14;
+            const placeRight = (cx < window.innerWidth * 0.6);
+            const placeDown = (cy < window.innerHeight * 0.45);
+
+            let x = placeRight ? (cx + offset) : (cx - tipRect.width - offset);
+            let y = placeDown ? (cy + offset) : (cy - tipRect.height - offset);
+
+            // ✅ Clamp dentro de pantalla
+            const pad = 8;
+            x = Math.max(pad, Math.min(x, window.innerWidth - tipRect.width - pad));
+            y = Math.max(pad, Math.min(y, window.innerHeight - tipRect.height - pad));
+
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+        }
+
+
+
+        document.addEventListener("scroll", () => {
+            const el = document.getElementById("donutTooltip");
+            if (el) el.style.display = "none";
+        }, { passive: true });
+
+        function hookDonutTooltipHide(canvasId) {
+            const c = document.getElementById(canvasId);
+            if (!c) return;
+            c.addEventListener("mouseleave", () => {
+                const el = document.getElementById("donutTooltip");
+                if (el) el.style.display = "none";
+            });
+        }
+
+        // Llamar una vez cuando ya existe el DOM:
+        hookDonutTooltipHide("donutMix");
+        hookDonutTooltipHide("donutQuimicos");
+
+
+
+
+        function renderDonutMix(vQuimicos, vMaquinas, vAccesorios) {
+            const el = document.getElementById("donutMix");
+            if (!el) return;
+
+            if (chartMix) chartMix.destroy();
+
+            const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CL")}`;
+
+            chartMix = new Chart(el, {
+                type: "doughnut",
+                data: {
+                    labels: ["Químicos", "Máquinas", "Accesorios"],
+                    datasets: [{
+                        data: [Number(vQuimicos || 0), Number(vMaquinas || 0), Number(vAccesorios || 0)],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: "72%",
+                    layout: { padding: 10 },
+                    interaction: { mode: "nearest", intersect: true },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: false,
+                            external: externalDonutTooltipHandler,
+                            callbacks: {
+                                title: (items) => "Mix (Mes)",
+                                label: (ctx) => `${ctx.label}: ${fmt(ctx.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function cargarDonas(desdeDate, hastaDate, cardCode) {
+
+            // ✅ Normaliza a YYYY-MM-DD aunque venga Date o string
+            const toYMD = (v) => {
+                if (!v) return "";
+                if (v instanceof Date) return v.toISOString().slice(0, 10);
+
+                const s = String(v).trim();
+
+                // "2026-02-01"
+                if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+                // "2026-02" -> "2026-02-01"
+                if (/^\d{4}-\d{2}$/.test(s)) return s + "-01";
+
+                // último recurso
+                return s;
+            };
+
+            const desde = toYMD(desdeDate);
+            const hasta = toYMD(hastaDate);
+
+            if (!desde || !hasta) {
+                console.warn("cargarDonas(): fechas inválidas", { desdeDate, hastaDate, desde, hasta });
+                return;
+            }
+
+            const qs = new URLSearchParams({ desde, hasta });
+            if (cardCode && String(cardCode).trim() !== "") qs.append("cardCode", String(cardCode).trim());
+
+            try {
+                const url = `${API_BASE}/api/dashboard/ventas-acct-resumen?${qs.toString()}`;
+                const res = await window.SpartanAuth.fetchAuth(url);
+
+                // tu fetchAuth a veces retorna {ok, data} o retorna directo data.
+                // Normalizamos:
+                const ok = (res && typeof res === "object" && "ok" in res) ? !!res.ok : true;
+                const data = (res && typeof res === "object" && "data" in res) ? (res.data || []) : (res || []);
+                if (!ok) return;
+
+                // helpers (deben existir en tu ingreso.html)
+                const netoQ = getNeto(data, "40101001"); // Químicos
+                const netoM = getNeto(data, "40101002"); // Máquinas
+                const netoA = getNeto(data, "40101003"); // Accesorios
+
+                // 1) Dona MIX (Mes)
+                if (typeof renderDonutMix === "function") {
+                    renderDonutMix(netoQ, netoM, netoA);
+                }
+
+                // 2) Dona Químicos (Meta) + texto ordenado
+                //   ⚠️ Asumo que la meta viene dentro del mismo endpoint (ajusta si tu API la entrega en otro lado)
+                //   Ejemplos típicos:
+                //     res.metaQuimicos / res.quimicosMeta / res.meta / etc.
+                //   Por mientras: toma meta=0 si no viene.
+                const meta = Number(res?.metaQuimicos ?? res?.quimicosMeta ?? res?.meta ?? 0);
+                const vendido = Number(netoQ || 0);
+                const faltante = Math.max(0, meta - vendido);
+
+                // % faltante (si no hay meta, 0)
+                const pct = (meta > 0)
+                    ? Math.max(0, Math.round((1 - (vendido / meta)) * 100))
+                    : 0;
+
+                // 🔹 Texto mini ordenado (debajo de la dona)
+                const tipQ = document.getElementById("tipQuimicos");
+                if (tipQ) {
+                    const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CL")}`;
+                    tipQ.innerHTML = `
+                <div class="rowx"><span class="lbl">Vendido:</span><span class="val">${fmt(vendido)}</span></div>
+                <div class="rowx"><span class="lbl">Meta:</span><span class="val">${fmt(meta)}</span></div>
+                <div class="rowx"><span class="lbl">Faltante:</span><span class="val">${fmt(faltante)}</span></div>
+                <div class="pct">${pct}%</div>
+            `;
+                }
+
+                // 🔹 Dibuja la dona de Químicos (Meta)
+                // Requiere: chartQ (global) y canvas id="donutQuimicos"
+                const elQ = document.getElementById("donutQuimicos");
+                if (elQ) {
+                    if (typeof chartQ !== "undefined" && chartQ) chartQ.destroy();
+
+                    // centro: si meta=0 -> "Sin meta"
+                    let centerText = "0%";
+                    let centerSub = "Sin meta";
+                    let centerColor = "#6c757d";
+                    let centerSubColor = "#6c757d";
+
+                    if (meta > 0 && vendido >= meta) {
+                        centerText = "100%";
+                        centerSub = "Cumplido";
+                        centerColor = "#198754";
+                        centerSubColor = "#198754";
+                    } else if (meta > 0) {
+                        centerText = `${pct}%`;
+                        centerSub = "Faltante";
+                        centerColor = "#dc3545";
+                        centerSubColor = "#dc3545";
+                    }
+
+                    chartQ = new Chart(elQ, {
+                        type: "doughnut",
+                        data: {
+                            labels: ["Vendido", "Faltante"],
+                            datasets: [{
+                                data: [vendido, faltante],
+                                backgroundColor: ["#0d6efd", "#e9ecef"],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            cutout: "72%",
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { enabled: false },
+                                centerText: {
+                                    text: centerText,
+                                    subtext: centerSub,
+                                    color: centerColor,
+                                    subcolor: centerSubColor
+                                }
+                            }
+                        }
+                    });
+                }
+
+            } catch (e) {
+                console.error("Error donas:", e);
+            }
+        }
+
+
+       
+
+
+       
+
+
+
+
+        // ============================================================
+        // CIERRES
+        // ============================================================
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = value;
+        }
+
+        async function cargarCierreSemanal() {
+            const box = document.getElementById("boxCierreSemana");
+            if (!box) return;
+
+            try {
+                const url = `${API_BASE}/api/dashboard/cierre-semanal`;
+                const data = await SpartanAuth.fetchAuth(url);
+                if (!data || data.isVisible === false) {
+                    box.classList.add("d-none");
+                    return;
+                }
+
+                box.classList.remove("d-none");
+
+                setText("lblCierreSemana", data.label || "Cierre Semana");
+                setText("metaCierreSemana", `Rango: ${data.desde} a ${data.hasta}`);
+                setText("footCierreSemana", `Válido hasta: ${data.visibleHasta}`);
+
+                const t = data.totales || {};
+                setText("csFactura", formatMoney(t.factura || 0));
+                setText("csPedido", formatMoney(t.pedido || 0));
+                setText("csEntrega", formatMoney(t.entrega || 0));
+                setText("csTotal", formatMoney(t.total || 0));
+            } catch (err) {
+                console.warn("cierre-semanal error:", err);
+                box.classList.add("d-none");
+            }
+        }
+
+        async function cargarCierreMensual() {
+            const box = document.getElementById("boxCierreMensual");
+            if (!box) return;
+
+            const ym = document.getElementById("txtHasta")?.value; // yyyy-MM
+            let url = "/api/Dashboard/cierre-mensual";
+
+            if (ym && ym.includes("-")) {
+                const [anio, mes] = ym.split("-").map(Number);
+                url += `?anio=${anio}&mes=${mes}`;
+            }
+
+            try {
+                const data = await SpartanAuth.fetchAuth(url);
+                if (!data || data.isVisible === false) {
+                    box.classList.add("d-none");
+                    return;
+                }
+
+                box.classList.remove("d-none");
+
+                setText("metaCierreMensual", `Rango: ${data.desde || "—"} a ${data.hasta || "—"}`);
+                setText("footCierreMensual", `Periodo: ${data.anio}-${String(data.mes).padStart(2, "0")}`);
+
+                const map = {};
+                (data.detalle || []).forEach(d => map[d.categoria] = Number(d.monto || 0));
+
+                setText("cmQuimicos", formatMoney(map["Químicos"]));
+                setText("cmAccesorios", formatMoney(map["Accesorios"]));
+                setText("cmMaquinas", formatMoney(map["Máquinas"]));
+                setText("cmRepuestos", formatMoney(map["Repuestos Máquinas"]));
+                setText("cmServicio", formatMoney(map["Servicio Técnico"]));
+                setText("cmTotal", formatMoney(data.total));
+            } catch (e) {
+                console.warn("cierre-mensual:", e);
+                box.classList.add("d-none");
+            }
+        }
+
+        function bindCierreMensualButton() {
+            const btn = document.getElementById("btnCierreMensual");
+            if (!btn) return;
+            btn.onclick = () => cargarCierreMensual();
+        }
+
+        async function cargarCierres() {
+            await cargarCierreMensual();
+            await cargarCierreSemanal();
+        }
+
+        /* ============================================================
+           DASHBOARD PRINCIPAL (tu código original)
+        ============================================================ */
+        let chartVentasMes = null;
+        let chartTopActivos = null;
+        let chartTopInactivos = null;
+
+        function obtenerRango12Meses() {
+            const mesSeleccionado = document.getElementById("txtHasta").value;
+            if (!mesSeleccionado) return null;
+
+            const [y, m] = mesSeleccionado.split("-").map(Number);
+            const hasta = new Date(y, m, 0);
+            const desde = new Date(y, m - 12, 1);
+
+            const pad = v => String(v).padStart(2, "0");
+
+            return {
+                desde: `${desde.getFullYear()}-${pad(desde.getMonth() + 1)}-01`,
+                hasta: `${hasta.getFullYear()}-${pad(hasta.getMonth() + 1)}-${pad(hasta.getDate())}`
+            };
+        }
+
+        function obtenerUltimos3MesesKeys() {
+            const mesSeleccionado = document.getElementById("txtHasta").value;
+            const [y, m] = mesSeleccionado.split("-").map(Number);
+
+            const result = [];
+            for (let i = 0; i < 3; i++) {
+                const d = new Date(y, m - 1 - i, 1);
+                result.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+            }
+            return result;
+        }
+
+        function limpiarGraficos() {
+            if (chartVentasMes) { chartVentasMes.destroy(); chartVentasMes = null; }
+            if (chartTopActivos) { chartTopActivos.destroy(); chartTopActivos = null; }
+            if (chartTopInactivos) { chartTopInactivos.destroy(); chartTopInactivos = null; }
+
+            document.getElementById("resumenVentasMes").textContent = "";
+            document.getElementById("resumenTopActivos").textContent = "";
+            document.getElementById("resumenTopInactivos").textContent = "";
+            document.getElementById("listaResumen").innerHTML = "";
+        }
+
+        function parseMonthInputToDates(monthStr) {
+            // monthStr esperado: "YYYY-MM"
+            if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) return null;
+
+            const [yStr, mStr] = monthStr.split("-");
+            const y = Number(yStr);
+            const m = Number(mStr); // 1..12
+            if (!y || !m || m < 1 || m > 12) return null;
+
+            const desdeMes = new Date(y, m - 1, 1);
+            const hastaMes = new Date(y, m, 0); // día 0 del mes siguiente = último día del mes actual
+
+            // últimos 12 meses hasta el mes seleccionado
+            const desde12 = new Date(y, (m - 1) - 11, 1);
+            const hasta12 = new Date(y, m, 0);
+
+            return { y, m, desdeMes, hastaMes, desde12, hasta12 };
+        }
+
+        function renderDonutQuimicosMeta(res) {
+            const el = document.getElementById("donutQuimicos");
+            if (!el) return;
+
+            const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CL")}`;
+
+            const meta = Number(res?.metaQuimicos || 0);
+            const vendido = Number(res?.quimicos?.neto || 0);
+
+            const faltante = Math.max(0, meta - vendido);
+            const pctCumplido = meta > 0 ? Math.min(100, Math.round((vendido / meta) * 100)) : 0;
+            const pctFaltante = meta > 0 ? Math.max(0, 100 - pctCumplido) : 0;
+
+            // mini texto debajo (opcional)
+            const tip = document.getElementById("tipQuimicos");
+            if (tip) {
+                tip.innerHTML =
+                    `Vendido: <b>${fmt(vendido)}</b> | ` +
+                    `Meta: <b>${fmt(meta)}</b> | ` +
+                    `Faltante: <b>${fmt(faltante)}</b> | ` +
+                    `<b>${pctCumplido}%</b>`;
+            }
+
+            if (chartQMeta) chartQMeta.destroy();
+
+            chartQMeta = new Chart(el, {
+                type: "doughnut",
+                data: {
+                    labels: ["Vendido", "Faltante"],
+                    datasets: [{
+                        data: meta > 0 ? [vendido, faltante] : [vendido, 0],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: "72%",
+                    layout: { padding: 10 },
+                    interaction: { mode: "nearest", intersect: true },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: false,
+                            external: externalDonutTooltipHandler,
+                            callbacks: {
+                                title: () => "Químicos (Meta)",
+                                label: (ctx) => `${ctx.label}: ${fmt(ctx.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        function obtenerRangoMesSeleccionado() {
+            const mesSeleccionado = document.getElementById("txtHasta")?.value;
+            if (!mesSeleccionado) return null;
+
+            const [y, m] = mesSeleccionado.split("-").map(Number);
+            const desde = new Date(y, m - 1, 1);
+            const hasta = new Date(y, m, 0);
+
+            const pad = v => String(v).padStart(2, "0");
+
+            return {
+                desde: `${desde.getFullYear()}-${pad(desde.getMonth() + 1)}-01`,
+                hasta: `${hasta.getFullYear()}-${pad(hasta.getMonth() + 1)}-${pad(hasta.getDate())}`
+            };
+        }
+
+
+
+
+        async function cargarDashboard() {
+            if (!jwtToken) {
+                setEstado("Debe autenticarse primero", "danger");
+                setNavEnabled(false);
+                return;
+            }
+
+            const rango = obtenerRango12Meses();
+            if (!rango) {
+                setEstado("Debe seleccionar un mes final", "danger");
+                setNavEnabled(false);
+                return;
+            }
+
+            const cardCode = (document.getElementById("txtCardCode")?.value || "").trim();
+
+            const params = new URLSearchParams();
+            params.append("desde", rango.desde);
+            params.append("hasta", rango.hasta);
+
+            if (currentRole === "VENDEDOR" && currentSlpCode) params.append("slpCode", currentSlpCode);
+            if (cardCode) params.append("cardCode", cardCode);
+
+            // ✅ Cuenta QUIMICOS
+            params.append("acctCode", "40101001");
+
+            try {
+                // 1) Trae dataset base (12 meses)
+                const data = await SpartanAuth.fetchAuth("/api/Ventas/periodo-acct?" + params.toString());
+                if (!data) {
+                    setEstado("Sin respuesta del servidor.", "warning");
+                    limpiarGraficos();
+                    setNavEnabled(false);
+                    return;
+                }
+
+                datosPeriodo = data;
+
+                // 2) Validación dataset
+                if (!Array.isArray(datosPeriodo) || datosPeriodo.length === 0) {
+                    setEstado("No hay datos en el período seleccionado", "warning");
+                    limpiarGraficos();
+                    setNavEnabled(false);
+                    return;
+                }
+
+                setEstado(`Datos cargados: ${datosPeriodo.length} filas`, "success");
+
+                // 3) Render gráficos (NO dependen de donas/cierres)
+                renderVentasPorMes();
+                renderTopActivos();
+                renderTopInactivos();
+                renderResumenRapido();
+
+                // 4) Habilita navegación
+                setNavEnabled(true);
+
+                // 5) Donas + cierres (protegido: si falla, NO rompe lo anterior)
+                try {
+                    const ym = (document.getElementById("txtHasta")?.value || "");
+                    const [anio, mes] = ym.split("-").map(n => parseInt(n, 10));
+                    if (anio && mes) await cargarDonas(anio, mes, cardCode);
+                } catch (e) {
+                    console.warn("Donas no cargaron (se continúa):", e);
+                }
+
+                try {
+                    await cargarCierres();
+                } catch (e) {
+                    console.warn("Cierres no cargaron (se continúa):", e);
+                }
+
+            } catch (err) {
+                console.error(err);
+                setEstado("Error de conexión al cargar dashboard: " + (err?.message || err), "danger");
+                limpiarGraficos();
+                setNavEnabled(false);
+            }
+        }
+
+
+
+
+        
+
+
+        function renderVentasPorMes() {
+            const porMes = {};
+            datosPeriodo.forEach(r => {
+                const key = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
+                porMes[key] = (porMes[key] || 0) + (Number(r.ventaNetaSN) || 0);
+            });
+
+            const keysOrdenadas = Object.keys(porMes).sort();
+            const labels = keysOrdenadas;
+            const valores = keysOrdenadas.map(k => porMes[k]);
+
+            const ctx = document.getElementById("chartVentasMes").getContext("2d");
+            if (chartVentasMes) chartVentasMes.destroy();
+
+            chartVentasMes = new Chart(ctx, {
+                type: "bar",
+                data: { labels, datasets: [{ label: "Venta neta SN", data: valores }] }
+            });
+
+            const total = valores.reduce((a, b) => a + b, 0);
+            document.getElementById("resumenVentasMes").textContent =
+                `Total últimos 12 meses: ${total.toLocaleString("es-CL", { minimumFractionDigits: 0 })}`;
+        }
+
+        function renderTopActivos() {
+            const ultimos3 = obtenerUltimos3MesesKeys();
+            const [m0, m1, m2] = ultimos3;
+
+            const porCliente = {};
+            datosPeriodo.forEach(r => {
+                const keyMes = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
+                if (!porCliente[r.codigoCliente]) porCliente[r.codigoCliente] = { nombre: r.nombreCliente, porMes: {} };
+                porCliente[r.codigoCliente].porMes[keyMes] =
+                    (porCliente[r.codigoCliente].porMes[keyMes] || 0) + (Number(r.ventaNetaSN) || 0);
+            });
+
+            const activos = [];
+            Object.keys(porCliente).forEach(card => {
+                const info = porCliente[card];
+                const m0v = info.porMes[m0] || 0;
+                const m1v = info.porMes[m1] || 0;
+                const m2v = info.porMes[m2] || 0;
+                if (m0v > 0 && m1v > 0 && m2v > 0) activos.push({ card, nombre: info.nombre, total3: m0v + m1v + m2v });
+            });
+
+            activos.sort((a, b) => b.total3 - a.total3);
+            const top5 = activos.slice(0, 5);
+
+            const labels = top5.map(x => x.nombre);
+            const valores = top5.map(x => x.total3);
+
+            const ctx = document.getElementById("chartTopActivos").getContext("2d");
+            if (chartTopActivos) chartTopActivos.destroy();
+
+            chartTopActivos = new Chart(ctx, {
+                type: "bar",
+                data: { labels, datasets: [{ label: "Venta neta en últimos 3 meses", data: valores }] }
+            });
+
+            document.getElementById("resumenTopActivos").textContent =
+                top5.length === 0
+                    ? "No se encontraron clientes con compras en cada uno de los últimos 3 meses."
+                    : `Se encontraron ${activos.length} clientes activos los 3 meses. Mostrando top 5.`;
+        }
+
+        function renderTopInactivos() {
+            const ultimos3 = obtenerUltimos3MesesKeys();
+            const set3 = new Set(ultimos3);
+
+            const porCliente = {};
+            datosPeriodo.forEach(r => {
+                const keyMes = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
+                if (!porCliente[r.codigoCliente]) {
+                    porCliente[r.codigoCliente] = {
+                        nombre: r.nombreCliente,
+                        total12: 0,
+                        tieneEnUltimos3: false,
+                        ultimoMesCompra: keyMes
+                    };
+                }
+
+                const info = porCliente[r.codigoCliente];
+                info.total12 += (Number(r.ventaNetaSN) || 0);
+
+                if (set3.has(keyMes) && (Number(r.ventaNetaSN) || 0) > 0) info.tieneEnUltimos3 = true;
+                if (keyMes > info.ultimoMesCompra) info.ultimoMesCompra = keyMes;
+            });
+
+            const inactivos = [];
+            Object.keys(porCliente).forEach(card => {
+                const info = porCliente[card];
+                if (!info.tieneEnUltimos3) inactivos.push({ card, nombre: info.nombre, total12: info.total12, ultimoMes: info.ultimoMesCompra });
+            });
+
+            inactivos.sort((a, b) => b.total12 - a.total12);
+            const top5 = inactivos.slice(0, 5);
+
+            const labels = top5.map(x => x.nombre);
+            const valores = top5.map(x => x.total12);
+
+            const ctx = document.getElementById("chartTopInactivos").getContext("2d");
+            if (chartTopInactivos) chartTopInactivos.destroy();
+
+            chartTopInactivos = new Chart(ctx, {
+                type: "bar",
+                data: { labels, datasets: [{ label: "Venta neta últimos 12 meses (sin compras en últimos 3)", data: valores }] }
+            });
+
+            document.getElementById("resumenTopInactivos").textContent =
+                top5.length === 0
+                    ? "No se encontraron clientes inactivos (sin compras en los últimos 3 meses)."
+                    : `Top 5 clientes que no compran en los últimos 3 meses (${ultimos3.join(", ")}), pero sí tuvieron compras en los 12 meses analizados.`;
+        }
+
+        function renderResumenRapido() {
+            const lista = document.getElementById("listaResumen");
+            lista.innerHTML = "";
+
+            if (!datosPeriodo || datosPeriodo.length === 0) return;
+
+            let total = 0;
+            const setClientes = new Set();
+
+            datosPeriodo.forEach(r => {
+                total += (Number(r.ventaNetaSN) || 0);
+                setClientes.add(r.codigoCliente);
+            });
+
+            const li1 = document.createElement("li");
+            li1.textContent = `Total ventas 12 meses: ${total.toLocaleString("es-CL", { minimumFractionDigits: 0 })}`;
+
+            const li2 = document.createElement("li");
+            li2.textContent = `Número de clientes con movimiento: ${setClientes.size}`;
+
+            lista.appendChild(li1);
+            lista.appendChild(li2);
+        }
+
+        /* ============================================================
+           LOGOUT
+        ============================================================ */
+        function logout() {
+            if (typeof clearSession === "function") clearSession();
+            window.location.href = "login.html";
+        }
+
+        document.getElementById("btnLogout")?.addEventListener("click", logout);
+
+        /* ============================================================
+           INIT
+        ============================================================ */
+        document.addEventListener("DOMContentLoaded", async () => {
+            await magicLinkBootstrap();
+            if (!ensureLoggedInOrRedirect()) return;
+            if (!initAuthOrRedirect()) return;
+
+             // set mes por defecto (hoy)
+            const hoy = new Date();
+            const y = hoy.getFullYear();
+            const m = String(hoy.getMonth() + 1).padStart(2, "0");
+            const txtHasta = document.getElementById("txtHasta");
+            if (txtHasta && !txtHasta.value) txtHasta.value = `${y}-${m}`;
+
+            setNavEnabled(false);
+            bindCierreMensualButton();
+
+            // ✅ DONAS inmediato (Mix + Químicos Meta)
+            const rangoMes = obtenerRangoMesSeleccionado();
+            if (rangoMes) {
+                await cargarDonas(rangoMes.desde, rangoMes.hasta, ""); // cardCode vacío
+            }
+
+            // (opcional) cierres también al entrar
+            await cargarCierres();
+
+            
+        });
+
+    </script>
+
+
+    <div id="donutTooltip" class="donut-tooltip" style="display:none;"></div>
+
+</body>
+</html>

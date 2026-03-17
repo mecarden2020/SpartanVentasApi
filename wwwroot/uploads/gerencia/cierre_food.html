@@ -1,0 +1,235 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Gerencia Food – Cierres (Semanal / Mensual)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        body {
+            background: #f7f7f7;
+        }
+
+        .card {
+            box-shadow: 0 2px 10px rgba(0,0,0,.06);
+            border: 0;
+            border-radius: 16px;
+        }
+
+        .title {
+            font-weight: 700;
+        }
+
+        .muted {
+            color: #6c757d;
+            font-size: .9rem;
+        }
+
+        .kpi {
+            font-weight: 800;
+            font-size: 1.15rem;
+        }
+
+        .chip {
+            font-size: .85rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            padding: .25rem .6rem;
+            background: #fff;
+        }
+
+        table thead th {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 1;
+        }
+
+        .table-responsive {
+            max-height: 520px;
+        }
+
+        .btn-soft {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+        }
+
+            .btn-soft:hover {
+                background: #f8f9fa;
+            }
+
+        .logo {
+            height: 34px;
+        }
+
+        .chart-big {
+            height: 620px;
+        }
+
+        .legend-box {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid p-3 p-md-4">
+
+        <!-- HEADER -->
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="d-flex align-items-center gap-3">
+                <img src="img/spartan-logo.png" class="logo" alt="Spartan" />
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <h4 class="mb-0 title">Gerencia Food – Cierres</h4>
+                        <span class="chip">FOOD (FB+IN)</span>
+                        <span class="chip" id="chipModo">—</span>
+                        <span class="chip" id="chipPeriodo">—</span>
+                    </div>
+                    <div class="muted">
+                        Vista ejecutiva Food: cierre semanal (tabla + ranking) y cierre mensual (facturado neto por categoría).
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 align-items-center">
+                <span id="lblUsuario" class="me-2 text-muted" style="font-size:.95rem;"></span>
+
+                <a class="btn btn-success" href="ranking_food.html">Ranking</a>
+                <a class="btn btn-success" href="gerencia_presupuesto_ventas.html?division=FOOD">Gerencia</a>
+                <a class="btn btn-success" href="cierre_food.html" id="btnCierres">Cierres</a>
+                <a class="btn btn-success" href="nuevos_food.html">Nuevos</a>
+
+                <button class="btn btn-soft" id="btnReload" type="button">Recargar</button>
+                <button class="btn btn-outline-secondary" id="btnLogout" type="button">Cerrar sesión</button>
+            </div>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="card p-3 mb-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-2">
+                    <label class="form-label" for="anio">Año</label>
+                    <input type="number" class="form-control" id="anio" min="2000" max="2100" />
+                </div>
+
+                <div class="col-12 col-md-2">
+                    <label class="form-label" for="mes">Mes</label>
+                    <select class="form-select" id="mes">
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3">Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <label class="form-label" for="modo">Modo</label>
+                    <select class="form-select" id="modo">
+                        <option value="semanal">Cierre Semanal (Factura / Pedido / Entrega)</option>
+                        <option value="mensual">Cierre Mensual (Facturado por Categoría)</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-2">
+                    <button class="btn btn-primary w-100" id="btnCargar" type="button">Cargar tablero</button>
+                </div>
+
+                <div class="col-12 col-md-2">
+                    <div class="muted" id="estado"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs (7 cards) -->
+        <div class="row g-3 mb-3" id="kpi7Wrap" style="display:none;">
+            <div class="col-12 col-md-6 col-lg"><div class="card p-3"><div class="muted">Químicos</div><div class="kpi" id="kpiQ">—</div></div></div>
+            <div class="col-12 col-md-6 col-lg"><div class="card p-3"><div class="muted">Accesorios</div><div class="kpi" id="kpiA">—</div></div></div>
+            <div class="col-12 col-md-6 col-lg"><div class="card p-3"><div class="muted">Máquinas</div><div class="kpi" id="kpiM">—</div></div></div>
+            <div class="col-12 col-md-6 col-lg"><div class="card p-3"><div class="muted">Repuestos Máquinas</div><div class="kpi" id="kpiRM">—</div></div></div>
+            <div class="col-12 col-md-6 col-lg"><div class="card p-3"><div class="muted">Servicio Técnico</div><div class="kpi" id="kpiST">—</div></div></div>
+            <div class="col-12 col-md-6 col-lg"><div class="card p-3"><div class="muted">Otras Ventas</div><div class="kpi" id="kpiOV">—</div></div></div>
+            <div class="col-12 col-md-6 col-lg"><div class="card p-3"><div class="muted fw-semibold">Total General</div><div class="kpi" id="kpiTG">—</div></div></div>
+        </div>
+
+        <!-- TABLA -->
+        <div class="card p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <div class="fw-semibold" id="tablaTitle">Detalle</div>
+                    <div class="muted" id="tablaHint">—</div>
+                </div>
+                <button class="btn btn-outline-success btn-sm" id="btnExportCSV" type="button" style="display:none;">
+                    Exportar a Excel
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle mb-0" id="tabla">
+                    <thead id="thead"></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- RANKING -->
+        <div class="row g-3 mb-3" id="rankingWrap" style="display:none;">
+            <div class="col-12">
+                <div class="card p-3 chart-big">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="fw-semibold">Cierre semanal – Ranking vendedores (Top 25)</div>
+                            <div class="muted">Facturas / Pedidos / Entregas / Total (MTD)</div>
+                        </div>
+                        <div id="rankingLegend"></div>
+                    </div>
+
+                    <div id="rankingCanvasWrap" style="height:560px; position:relative;">
+                        <canvas id="chartRankingVendedores"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHART -->
+        <div class="row g-3 mb-3" id="chartWrap" style="display:none;">
+            <div class="col-12">
+                <div class="card p-3 chart-big">
+                    <div class="fw-semibold" id="chartMainTitle">—</div>
+                    <div class="muted" id="chartMainSub">—</div>
+                    <canvas id="chartMain"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scope para el JS -->
+    <script>
+        window.GERENCIA_SCOPE = "FOOD"; // FOOD = FB + IN
+    </script>
+
+    <script src="/js/auth-header.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="/js/cierre_gerencia.js"></script>
+    <script src="/js/gerencia-nav.js"></script>
+
+
+</body>
+</html>

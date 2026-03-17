@@ -1,0 +1,446 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Sábana Ventas – SPARTAN (SAP B1)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+    <style>
+        body {
+            background-color: #f7f7f7;
+        }
+
+        .logo-spartan {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        /* --------------------------------------------- */
+        /*   🔵 LOADER ESTILO SAP CORPORATIVO             */
+        /* --------------------------------------------- */
+        #loaderOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 66, 118, 0.55);
+            display: none; /* oculto por defecto */
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            backdrop-filter: blur(3px);
+        }
+
+        #loaderBox {
+            background: rgba(0, 38, 66, 0.72);
+            padding: 28px 45px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 0 12px rgba(0,0,0,0.35);
+            font-size: 15px;
+            min-width: 280px;
+        }
+
+            #loaderBox .spinner-border {
+                width: 3rem;
+                height: 3rem;
+                margin-bottom: 10px;
+            }
+
+        .table-sm td, .table-sm th {
+            padding: .30rem .45rem;
+            font-size: 0.80rem;
+        }
+
+        /* Botón logout corporativo */
+        .btn-spartan-logout {
+            background: #00527A;
+            color: #fff;
+            border: none;
+        }
+
+            .btn-spartan-logout:hover {
+                background: #003E5C;
+                color: #fff;
+            }
+
+        /* Firma tenue opcional */
+        .powered {
+            position: fixed;
+            right: 14px;
+            bottom: 14px;
+            font-size: 11px;
+            color: rgba(0,0,0,.35);
+            user-select: none;
+            transition: color .2s ease;
+        }
+
+            .powered:hover {
+                color: rgba(0,0,0,.75);
+            }
+    </style>
+</head>
+
+<body>
+
+    <!-- 🔵 LOADER SAP -->
+    <div id="loaderOverlay" aria-hidden="true">
+        <div id="loaderBox">
+            <div class="spinner-border text-light" role="status"></div>
+            <div id="loaderText">Cargando información…</div>
+            <div class="small">Por favor espere…</div>
+        </div>
+    </div>
+
+    <header class="border-bottom bg-white mb-3">
+        <div class="container-fluid py-2 d-flex justify-content-between align-items-center">
+
+            <!-- ✅ BRAND CLICKABLE → Dashboard -->
+            <a href="ingreso.html"
+               class="d-flex align-items-center text-decoration-none text-dark"
+               title="Volver al Dashboard">
+
+                <img src="img/spartan-logo.png" class="logo-spartan" alt="Spartan">
+
+                <div class="ms-2">
+                    <div class="fw-bold" style="font-size:20px;">
+                        Ventas – SPARTAN (SAP B1)
+                    </div>
+                    <div class="small text-muted">
+                        Portal interno de vendedores
+                    </div>
+                </div>
+
+            </a>
+
+            <!-- ✅ BOTONES DE NAVEGACIÓN ENTRE REPORTES -->
+            <div class="nav-top d-flex gap-2 align-items-center">
+
+                <button type="button"
+                        class="btn btn-secondary nav-dashboard-btn"
+                        data-url="cargar_ventas.html">
+                    Cargar ventas
+                </button>
+
+                <button type="button"
+                        class="btn btn-secondary nav-dashboard-btn"
+                        data-url="ranking_ventas.html">
+                    Ranking ventas
+                </button>
+
+                <button type="button"
+                        class="btn btn-success nav-dashboard-btn"
+                        data-url="sabana_ventas.html">
+                    Sábana Ventas
+                </button>
+
+                <button type="button"
+                        class="btn btn-secondary nav-dashboard-btn"
+                        data-url="estado_pedidos.html">
+                    Estado Pedidos
+                </button>
+
+                <button type="button"
+                        class="btn btn-spartan-logout ms-2"
+                        onclick="logout()">
+                    Cerrar sesión
+                </button>
+
+            </div>
+
+        </div>
+    </header>
+
+
+    <main class="container-fluid" style="max-width:1480px;">
+
+        <!-- ESTADO -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <strong>Estado:</strong>
+                <span id="estadoTexto" class="text-danger">No autenticado</span>
+                <span class="float-end small text-muted" id="estadoUsuario"></span>
+            </div>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="card mb-3">
+            <div class="card-body row g-3 align-items-end">
+
+                <div class="col-md-4">
+                    <label class="form-label">Mes de referencia</label>
+                    <input id="txtMes" type="month" class="form-control">
+                    <div class="form-text">Se generará la sábana para los últimos 13 meses.</div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Cliente (CardCode, opcional)</label>
+                    <input id="txtCardCode" class="form-control"
+                           placeholder="Ej: C77001020 – deja vacío para todos">
+                </div>
+
+                <div class="col-md-4 d-grid gap-2">
+                    <button class="btn btn-success" type="button" onclick="cargarSabana()">Cargar sábana</button>
+
+                    <button id="btnExportarSabanaExcel"
+                            class="btn btn-outline-primary btn-sm"
+                            type="button" onclick="exportarSabanaExcel()">
+                        Exportar sábana a Excel
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TABLA -->
+        <div class="card">
+            <div class="card-header">
+                Sábana de ventas (detalle 13 meses)
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height:600px;">
+                    <table class="table table-sm table-striped" id="tblSabana">
+                        <thead class="table-light"></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="powered">powered by MCF-2025</div>
+    </main>
+
+    <script>
+        /* =======================================
+           🔵 LOADER SAP - CONTROL (ÚNICO)
+        ======================================= */
+        function showLoader(texto) {
+            const overlay = document.getElementById("loaderOverlay");
+            const txt = document.getElementById("loaderText");
+            if (txt && texto) txt.textContent = texto;
+            overlay.style.display = "flex";
+        }
+
+        function hideLoader() {
+            document.getElementById("loaderOverlay").style.display = "none";
+        }
+
+        /* =======================================
+           NAVEGACIÓN TOP (data-url)
+        ======================================= */
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".nav-dashboard-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const url = btn.getAttribute("data-url");
+                    if (url) window.location.href = url;
+                });
+            });
+        });
+
+        let jwtToken = null;
+
+        /* =======================================
+           LOGIN AUTOMÁTICO DESDE localStorage
+        ======================================= */
+        window.onload = function () {
+            const token = localStorage.getItem("jwtToken");
+            const alias = localStorage.getItem("currentAlias");
+            const rol = localStorage.getItem("currentRole");
+            const slp = localStorage.getItem("currentSlpCode");
+
+            if (token) {
+                jwtToken = token;
+
+                document.getElementById("estadoTexto").textContent = "Autenticado correctamente";
+                document.getElementById("estadoTexto").classList.remove("text-danger");
+                document.getElementById("estadoTexto").classList.add("text-success");
+
+                document.getElementById("estadoUsuario").textContent =
+                    `Usuario: ${alias} – Rol: ${rol}`;
+            }
+
+            // Mes actual preseleccionado
+            const hoy = new Date();
+            const ym = hoy.toISOString().substring(0, 7);
+            document.getElementById("txtMes").value = ym;
+        };
+
+        /* =======================================
+           Cargar Sábana
+        ======================================= */
+        async function cargarSabana() {
+            if (!jwtToken) {
+                alert("Debe iniciar sesión.");
+                return;
+            }
+
+            const mesTexto = document.getElementById("txtMes").value;  // yyyy-mm
+            const cardCode = document.getElementById("txtCardCode").value.trim();
+
+            if (!mesTexto) {
+                alert("Seleccione un mes.");
+                return;
+            }
+
+            const partes = mesTexto.split("-");
+            const anio = parseInt(partes[0], 10);
+            const mes = parseInt(partes[1], 10);
+
+            showLoader("Cargando sábana de ventas...");
+
+            try {
+                const params = new URLSearchParams();
+                params.append("mesReferencia", mes);
+                params.append("anioReferencia", anio);
+
+                const resp = await fetch("/api/Ventas/sabana?" + params.toString(), {
+                    headers: { "Authorization": "Bearer " + jwtToken }
+                });
+
+                if (!resp.ok) {
+                    alert("Error al cargar sábana: " + await resp.text());
+                    return;
+                }
+
+                let datos = await resp.json();
+
+                // Filtro por CardCode en frontend
+                if (cardCode.length > 0) {
+                    datos = datos.filter(x =>
+                        String(x.CardCode ?? "").toUpperCase().includes(cardCode.toUpperCase())
+                    );
+                }
+
+                renderTabla(datos);
+
+                document.getElementById("estadoTexto").textContent =
+                    `Sábana cargada (${datos.length} filas)`;
+                document.getElementById("estadoTexto").classList.add("text-success");
+
+            } catch (err) {
+                alert("Error: " + err);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        /* =======================================
+           Renderizar tabla dinámica
+        ======================================= */
+        function renderTabla(rows) {
+            const thead = document.querySelector("#tblSabana thead");
+            const tbody = document.querySelector("#tblSabana tbody");
+
+            thead.innerHTML = "";
+            tbody.innerHTML = "";
+
+            if (!rows || rows.length === 0) return;
+
+            const cols = Object.keys(rows[0]);
+
+            let thRow = "<tr>";
+            cols.forEach(c => thRow += `<th>${c}</th>`);
+            thRow += "</tr>";
+            thead.innerHTML = thRow;
+
+            rows.forEach(r => {
+                let tr = "<tr>";
+                cols.forEach(c => {
+                    tr += `<td>${r[c] ?? ""}</td>`;
+                });
+                tr += "</tr>";
+                tbody.innerHTML += tr;
+            });
+        }
+
+        /* =======================================
+           Exportar Sábana a Excel
+        ======================================= */
+        async function exportarSabanaExcel() {
+            const mesRef = document.getElementById("txtMes").value; // usa el mismo mes
+            const cardCode = document.getElementById("txtCardCode").value.trim();
+
+            if (!mesRef) {
+                alert("Debe seleccionar el mes de referencia.");
+                return;
+            }
+
+            const token = localStorage.getItem("jwtToken");
+            if (!token) {
+                alert("Sesión no encontrada. Vuelva a autenticarse en login.");
+                return;
+            }
+
+            const [anioStr, mesStr] = mesRef.split("-");
+            const anio = parseInt(anioStr, 10);
+            const mes = parseInt(mesStr, 10);
+
+            const params = new URLSearchParams();
+            params.append("mesReferencia", mes);
+            params.append("anioReferencia", anio);
+            if (cardCode) params.append("cardCode", cardCode);
+
+            showLoader("Generando Excel de sábana...");
+
+            try {
+                const resp = await fetch("/api/Ventas/sabana-excel?" + params.toString(), {
+                    method: "GET",
+                    headers: { "Authorization": "Bearer " + token }
+                });
+
+                if (!resp.ok) {
+                    const errorText = await resp.text();
+                    alert("Error al generar Excel (" + resp.status + "): " + errorText);
+                    return;
+                }
+
+                const blob = await resp.blob();
+
+                let fileName = "sabana_ventas.xlsx";
+                const cd = resp.headers.get("Content-Disposition");
+                if (cd && cd.includes("filename=")) {
+                    const match = cd.match(/filename="?([^"]+)"?/i);
+                    if (match && match[1]) fileName = match[1];
+                }
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error(err);
+                alert("Error de conexión al generar Excel: " + err);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        /* =======================================
+           Protege la página: si no hay token, login
+        ======================================= */
+        (function () {
+            if (!localStorage.getItem("jwtToken")) {
+                window.location.href = "login.html";
+            }
+        })();
+
+        function logout() {
+            localStorage.removeItem("jwtToken");
+            localStorage.removeItem("currentSlpCode");
+            localStorage.removeItem("currentRole");
+            localStorage.removeItem("currentAlias");
+            localStorage.removeItem("currentLogin");
+            localStorage.removeItem("currentPermisos");
+            window.location.href = "login.html";
+        }
+    </script>
+
+</body>
+</html>
