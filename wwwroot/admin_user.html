@@ -1,0 +1,185 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Administración de Usuarios - Spartan</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 24px;
+            background: #f6f8fb;
+            color: #1f2937;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        h1, h2 {
+            margin: 0 0 12px 0;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.08);
+            margin-bottom: 18px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        input, select, button {
+            padding: 8px 10px;
+            font-size: 14px;
+        }
+
+        input, select {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            min-width: 180px;
+        }
+
+        button {
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #00527a;
+            color: white;
+        }
+
+            button:hover {
+                opacity: .95;
+            }
+
+        .btn-sec {
+            background: #64748b;
+        }
+
+        .btn-danger {
+            background: #b91c1c;
+        }
+
+        .btn-green {
+            background: #15803d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+            vertical-align: top;
+            font-size: 14px;
+        }
+
+        th {
+            background: #eef2f7;
+        }
+
+        .acciones {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .muted {
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .estado-activo {
+            color: #15803d;
+            font-weight: bold;
+        }
+
+        .estado-inactivo {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+
+        #msg {
+            margin: 10px 0 0 0;
+            font-weight: bold;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div>
+            <h1>Administración de Usuarios</h1>
+            <div class="muted">Sesión actual: <span id="usuarioActual">...</span></div>
+        </div>
+        <button class="btn-sec" onclick="logout()">Cerrar sesión</button>
+    </div>
+
+    <div class="card">
+        <h2>Crear Usuario</h2>
+        <div class="row">
+            <input type="text" id="txtUsuario" placeholder="Login" />
+            <input type="text" id="txtNombre" placeholder="Nombre completo" />
+            <input type="password" id="txtClave" placeholder="Clave" />
+            <select id="selRol"></select>
+            <input type="number" id="txtSlpCode" placeholder="SlpCode (opcional)" />
+            <button onclick="crearUsuario()">Crear Usuario</button>
+        </div>
+        <div id="msg"></div>
+    </div>
+
+    <div class="row" style="margin-bottom:10px;">
+        <input type="text" id="txtBuscarUsuario" placeholder="Buscar por login, nombre, rol o SlpCode..." style="min-width:320px;" />
+        <button onclick="cargarUsuarios()">Buscar usuario</button>
+    </div>
+
+
+
+    <!-- Buscador (solo uno) -->
+    <div class="row" style="margin-bottom:10px;">
+       <!--  <input type="text" id="txtBuscarUsuario" placeholder="Buscar por login, nombre, rol o SlpCode..." style="min-width:320px;" /> -->
+        <button onclick="cargarUsuarios()">Actualizar listado</button>
+    </div>
+
+    <div class="card">
+        <h2>Listado de Usuarios</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Login</th>
+                    <th>Nombre</th>
+                    <th>Rol</th>
+                    <th>SlpCode</th>
+                    <th>Estado</th>
+                    <th>Link</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="tblUsuarios"></tbody>
+        </table>
+    </div>
+
+
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/admin_user.js"></script>
+</body>
+</html>

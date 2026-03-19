@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SpartanVentasApi | Acceso</title>
+    <link rel="stylesheet" href="/css/spartan.login.css" />
+</head>
+<body>
+    <div class="login-shell">
+        <div class="login-panel login-panel-left">
+            <div class="brand-block">
+                <div class="brand-badge">SA</div>
+                <h1>SpartanVentasApi</h1>
+                <p class="brand-subtitle">Acceso seguro a administración y gestión comercial</p>
+            </div>
+
+            <div class="brand-info">
+                <div class="info-card">
+                    <h2>Panel de Administración</h2>
+                    <p>
+                        Administra usuarios, roles, accesos y links de ingreso de forma centralizada,
+                        rápida y segura.
+                    </p>
+                </div>
+
+                <ul class="feature-list">
+                    <li>Control de usuarios y roles</li>
+                    <li>Gestión de links de acceso</li>
+                    <li>Seguridad con autenticación JWT</li>
+                    <li>Integración con SpartanVentasApi</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="login-panel login-panel-right">
+            <div class="login-card">
+                <div class="login-card-header">
+                    <h2>Iniciar sesión</h2>
+                    <p>Ingrese sus credenciales para acceder al sistema.</p>
+                </div>
+
+                <form id="loginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="txtUsuario">Usuario</label>
+                        <input type="text" id="txtUsuario" autocomplete="username" placeholder="Ingrese su usuario" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="txtClave">Clave</label>
+                        <input type="password" id="txtClave" autocomplete="current-password" placeholder="Ingrese su clave" />
+                    </div>
+
+                    <div id="msgError" class="message message-error hidden"></div>
+                    <div id="msgOk" class="message message-ok hidden"></div>
+
+                    <button type="submit" id="btnIngresar" class="btn-login">
+                        Ingresar
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <span>SPARTAN · Plataforma Administrativa</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/Spartan_login.js"></script>
+</body>
+</html>
