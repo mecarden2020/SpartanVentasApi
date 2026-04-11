@@ -680,7 +680,7 @@ namespace SpartanVentasApi.Controllers
                     cmd.Parameters.AddWithValue("@MesReferencia", mesReferencia);
                     cmd.Parameters.AddWithValue("@AnioReferencia", (object?)anioReferencia ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@SlpCode", (object?)slpCode ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@CardCode", (object?)cardCode ?? DBNull.Value);
+                    //cmd.Parameters.AddWithValue("@CardCode", (object?)cardCode ?? DBNull.Value);
 
                     await conn.OpenAsync();
                     using (var da = new SqlDataAdapter(cmd))
@@ -754,6 +754,13 @@ namespace SpartanVentasApi.Controllers
                     await conn.OpenAsync();
                     using (var da = new SqlDataAdapter(cmd))
                         da.Fill(tabla);
+                    var nombresColumnas = tabla.Columns
+                            .Cast<DataColumn>()
+                            .Select(c => c.ColumnName)
+                            .ToList();
+
+                    return Ok(nombresColumnas);
+
                 }
 
                 using var wb = new XLWorkbook();
