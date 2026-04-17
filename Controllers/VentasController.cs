@@ -12,6 +12,7 @@ using ClosedXML.Excel;
 using System.IO;
 using System.Threading.Tasks;
 using Dapper;
+using SpartanVentasApi.Models.Reportes;
 
 namespace SpartanVentasApi.Controllers
 {
@@ -53,6 +54,130 @@ namespace SpartanVentasApi.Controllers
 
             return (rol, slpCodeQuery);
         }
+
+
+        // ============================================================
+        // Reporte Ventas Gerencial (Gerencia / Portal) Metodo
+        // ============================================================
+        [HttpGet("reporte-gerencial")]
+        public async Task<IActionResult> GetReporteGerencial(
+    [FromQuery] int anio,
+    [FromQuery] int mes,
+    [FromQuery] string? categoriaVenta = null,
+    [FromQuery] string? division = null)
+        {
+            try
+            {
+                if (anio < 2020 || anio > 2100)
+                    return BadRequest(new { ok = false, mensaje = "El año es inválido." });
+
+                if (mes < 1 || mes > 12)
+                    return BadRequest(new { ok = false, mensaje = "El mes debe estar entre 1 y 12." });
+
+                categoriaVenta = string.IsNullOrWhiteSpace(categoriaVenta)
+                    ? null
+                    : categoriaVenta.Trim();
+
+                division = string.IsNullOrWhiteSpace(division)
+                    ? null
+                    : division.Trim();
+
+                using var connection = new SqlConnection(_config.GetConnectionString("SAP"));
+                await connection.OpenAsync();
+
+                using var multi = await connection.QueryMultipleAsync(
+                    "dbo.sp_BI_ReporteGerencial",
+                    new
+                    {
+                        Anio = anio,
+                        Mes = mes,
+                        CategoriaVenta = categoriaVenta,
+                        Division = division
+                    },
+                    commandType: CommandType.StoredProcedure
+                );
+
+                var kpis = await multi.ReadFirstOrDefaultAsync<ReporteVentasKpiDto>()
+                           ?? new ReporteVentasKpiDto();
+
+                var equipos = (await multi.ReadAsync<ReporteVentasEquipoDto>()).ToList();
+                var vendedores = (await multi.ReadAsync<ReporteVentasVendedorDto>()).ToList();
+                var productos = (await multi.ReadAsync<ReporteVentasProductoDto>()).ToList();
+                var clientesTop = (await multi.ReadAsync<ReporteVentasClienteTopDto>()).ToList();
+
+                var response = new ReporteVentasResponseDto
+                {
+                    Kpis = kpis,
+                    Equipos = equipos,
+                    Vendedores = vendedores,
+                    Productos = productos,
+                    ClientesTop = clientesTop
+                };
+
+                return Ok(new
+                {
+                    ok = true,
+                    mensaje = "Reporte gerencial obtenido correctamente.",
+                    data = response
+                });
+            }
+            catch (SqlException ex)
+            {
+                return StatusCode(500, new
+                {
+                    ok = false,
+                    mensaje = "Error SQL al obtener el reporte gerencial.",
+                    detalle = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    ok = false,
+                    mensaje = "Error al obtener el reporte gerencial.",
+                    detalle = ex.Message
+                });
+            }
+        }
+
+
+
+        private class VentasResumenTempDto
+        {
+            public int YEAR { get; set; }
+            public int MesNro { get; set; }
+            public string DATENAME { get; set; } = string.Empty;
+            public int SlpCode { get; set; }
+            public string EmpleadoVentas { get; set; } = string.Empty;
+            public string U_Centro_Costo { get; set; } = string.Empty;
+            public string Equipo { get; set; } = string.Empty;
+            public string Division { get; set; } = string.Empty;
+            public string CategoriaVenta { get; set; } = string.Empty;
+            public decimal Cantidad { get; set; }
+            public decimal VentaBruta { get; set; }
+            public decimal VentaNeta { get; set; }
+        }
+
+        private class MetasResumenTempDto
+        {
+            public int YEAR { get; set; }
+            public int MesNro { get; set; }
+            public string DATENAME { get; set; } = string.Empty;
+            public int SlpCode { get; set; }
+            public string EmpleadoVentas { get; set; } = string.Empty;
+            public string U_Centro_Costo { get; set; } = string.Empty;
+            public string Equipo { get; set; } = string.Empty;
+            public string Division { get; set; } = string.Empty;
+            public string CategoriaVenta { get; set; } = string.Empty;
+            public decimal MetaMes { get; set; }
+        }
+
+
+
+
+
+
 
         // ============================================================
         // GET: /api/ventas/periodo
@@ -706,7 +831,6 @@ namespace SpartanVentasApi.Controllers
                 return StatusCode(500, "Error en GetSabana: " + ex.Message);
             }
         }
-
         // ============================================================
         // GET: /api/ventas/sabana-excel
         // ============================================================
@@ -753,14 +877,9 @@ namespace SpartanVentasApi.Controllers
 
                     await conn.OpenAsync();
                     using (var da = new SqlDataAdapter(cmd))
+                    {
                         da.Fill(tabla);
-                    var nombresColumnas = tabla.Columns
-                            .Cast<DataColumn>()
-                            .Select(c => c.ColumnName)
-                            .ToList();
-
-                    return Ok(nombresColumnas);
-
+                    }
                 }
 
                 using var wb = new XLWorkbook();
@@ -769,6 +888,7 @@ namespace SpartanVentasApi.Controllers
                 ws.Cell(1, 1).InsertTable(tabla, "TablaSabana", true);
                 var tablaExcel = ws.Table("TablaSabana");
                 tablaExcel.ShowAutoFilter = true;
+
                 ws.SheetView.FreezeRows(1);
                 ws.Columns().AdjustToContents();
 
@@ -789,6 +909,10 @@ namespace SpartanVentasApi.Controllers
                 return StatusCode(500, "Error generando Excel de sábana: " + ex.Message);
             }
         }
+
+
+
+
 
         // ============================================================
         // GET: /api/ventas/estado-pedidos

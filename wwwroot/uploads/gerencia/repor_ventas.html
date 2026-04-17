@@ -1,0 +1,289 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reporte Gerencial de Ventas</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/repor_ventas.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid p-4">
+
+        <div class="dashboard-header">
+            <h2 class="mb-1">Reporte Gerencial de Ventas</h2>
+            <div>Vista dinámica de ventas, metas y cumplimiento por equipo</div>
+        </div>
+
+        <div class="filter-card">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Año</label>
+                    <select id="filtroAnio" class="form-select">
+                        <option value="2026" selected>2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Mes</label>
+                    <select id="filtroMes" class="form-select">
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3" selected>Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Categoría</label>
+                    <select id="filtroCategoria" class="form-select">
+                        <option value="Ventas Químicos" selected>Ventas Químicos</option>
+                        <option value="Ventas Máquinas">Ventas Máquinas</option>
+                        <option value="Ventas Accesorios">Ventas Accesorios</option>
+                        <option value="Ventas Repuestos Máquinas">Ventas Repuestos Máquinas</option>
+                        <option value="Ventas Servicio Técnico">Ventas Servicio Técnico</option>
+                        <option value="Otras Ventas">Otras Ventas</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">División</label>
+                    <select id="filtroDivision" class="form-select">
+                        <option value="">Todas</option>
+                        <option value="División Industrial">División Industrial</option>
+                        <option value="División Health Care">División Health Care</option>
+                        <option value="División Food y Beverages">División Food y Beverages</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2 d-grid">
+                    <button id="btnActualizar" class="btn btn-primary">Actualizar</button>
+                </div>
+            </div>
+
+            <div id="loadingBox" class="loading-box mt-3">
+                Cargando reporte...
+            </div>
+
+            <div id="errorBox" class="alert alert-danger error-box mt-3 mb-0"></div>
+
+            <div class="text-muted small mt-2">
+                * Mes actual: la meta se calcula con valores vigentes desde SAP. Meses anteriores: se utiliza snapshot histórico.
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title">Venta Total</div>
+                    <div id="kpiVentaTotal" class="kpi-value">$0</div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title">Meta Total</div>
+                    <div id="kpiMetaTotal" class="kpi-value">$0</div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title">Cumplimiento %</div>
+                    <div id="kpiCumplimiento" class="kpi-value">0%</div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-title">Brecha</div>
+                    <div id="kpiBrecha" class="kpi-value">$0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-lg-8">
+                <div class="chart-card">
+                    <div class="section-title">Venta vs Meta por Equipo</div>
+                    <div class="chart-wrap">
+                        <canvas id="chartVentaMeta"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="chart-card">
+                    <div class="section-title">Cumplimiento % por Equipo</div>
+                    <div class="chart-wrap">
+                        <canvas id="chartCumplimiento"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-card mt-3">
+            <div class="section-title">Resumen por Equipo</div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Equipo</th>
+                            <th class="text-end">Venta</th>
+                            <th class="text-end">Meta</th>
+                            <th class="text-end">Cumplimiento %</th>
+                            <th class="text-end">Brecha</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyResumenEquipos">
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                Sin datos cargados.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="table-card mt-3">
+            <div class="section-title">Análisis por Vendedor</div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Equipo</label>
+                    <select id="filtroEquipoVendedor" class="form-select"></select>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Venta Total Equipo</div>
+                        <div id="kpiVentaEquipoSel" class="kpi-value">$0</div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Meta Total Equipo</div>
+                        <div id="kpiMetaEquipoSel" class="kpi-value">$0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Equipo</th>
+                            <th>Vendedor</th>
+                            <th class="text-end">Venta</th>
+                            <th class="text-end">Meta</th>
+                            <th class="text-end">Cumplimiento %</th>
+                            <th class="text-end">Brecha</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyDetalleVendedor">
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-3">
+                                Sin datos cargados.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-card mt-3">
+                <div class="section-title">Top 5 Clientes del Equipo</div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Nombre Cliente</th>
+                                <th>Vendedor Asociado</th>
+                                <th class="text-end">Venta</th>
+                                <th class="text-end">% Aporte</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyTopClientesEquipo">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">
+                                    Sin datos cargados.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-card mt-3">
+            <div class="section-title">Análisis por Producto</div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Equipo</label>
+                    <select id="filtroEquipoProducto" class="form-select"></select>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-lg-5">
+                    <div class="chart-card">
+                        <div class="section-title">Top 5 Productos por Equipo</div>
+                        <div class="chart-wrap">
+                            <canvas id="chartTopProductos"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-7">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Equipo</th>
+                                    <th>Código</th>
+                                    <th>Producto</th>
+                                    <th class="text-end">Cantidad</th>
+                                    <th class="text-end">Venta</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyDetalleProducto">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">
+                                        Sin datos cargados.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer-mcf text-center mt-4 mb-2">
+            <small>Powered by MCF-2025</small>
+        </footer>
+
+    </div>
+
+    <script src="/js/auth-header.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/repor_ventas.js"></script>
+</body>
+</html>
