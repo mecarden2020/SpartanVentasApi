@@ -620,6 +620,17 @@
 
                 saveAuthSession(data);
 
+               
+                // 🔥 REDIRECCIÓN DINÁMICA
+                const redirect = new URLSearchParams(window.location.search).get("redirect");
+
+                if (redirect) {
+                    window.location.href = redirect;
+                    return true;
+                }
+
+
+
                 // limpiar token de URL
                 const url = new URL(window.location.href);
                 url.searchParams.delete("token");
