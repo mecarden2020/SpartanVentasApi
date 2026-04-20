@@ -433,16 +433,62 @@
             return;
         }
 
-            tbody.innerHTML = data.map(x => `
-            <tr>
-                <td>${x.equipo ?? ""}</td>
-                <td>${x.itemCode ?? ""}</td>
-                <td>${x.producto ?? ""}</td>
-                <td class="text-end">${formatNumber(x.cantidad ?? 0)}</td>
-                <td class="text-end">${formatCurrency(x.venta ?? 0)}</td>
-            </tr>
-        `).join("");
+        tbody.innerHTML = data.map(x => `
+        <tr>
+            <td>${x.empleadoVentas ?? ""}</td>
+            <td>${x.codigo ?? ""}</td>
+            <td>${x.producto ?? ""}</td>
+            <td class="text-end">${formatNumber(x.cantidad ?? 0)}</td>
+            <td class="text-end">${formatCurrency(x.venta ?? 0)}</td>
+        </tr>
+    `).join("");
     }
+
+    function renderAnalisisProducto(productos, equipoSeleccionado) {
+
+        console.log("PRODUCTOS:", productos);
+        console.log("EQUIPO SELECCIONADO:", equipoSeleccionado);
+
+        const filtrados = (productos || [])
+            .filter(p => !equipoSeleccionado || (p.equipo && p.equipo === equipoSeleccionado))
+            .sort((a, b) => (b.venta || 0) - (a.venta || 0));
+
+        const tbody = document.querySelector("#tblProductos tbody");
+        if (!tbody) return;
+
+        tbody.innerHTML = "";
+
+        if (!filtrados.length) {
+            tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center">
+                    No hay detalle por producto para los filtros seleccionados.
+                </td>
+            </tr>`;
+            actualizarGraficoTopProductos([], []);
+            return;
+        }
+
+        filtrados.forEach(p => {
+            tbody.innerHTML += `
+            <tr>
+                <td>${p.empleadoVentas ?? ""}</td>
+                <td>${p.codigo ?? ""}</td>
+                <td>${p.producto ?? ""}</td>
+                <td class="text-end">${formatNumber(p.cantidad ?? 0)}</td>
+                <td class="text-end">${formatCurrency(p.venta ?? 0)}</td>
+            </tr>
+        `;
+        });
+
+        const top5 = filtrados.slice(0, 5);
+
+        actualizarGraficoTopProductos(
+            top5.map(x => x.producto),
+            top5.map(x => x.venta)
+        );
+    }
+
 
 
 
@@ -568,11 +614,82 @@
         });
     }
 
+    function exportarExcelGerencial() {
+
+        const wb = XLSX.utils.book_new();
+
+        const resumenEquipos = dataEquipos.map(x => ({
+            Equipo: x.equipo,
+            Venta: x.venta,
+            Meta: x.meta,
+            "Cumplimiento %": x.cumplimientoPct,
+            Brecha: x.brecha
+        }));
+
+        const wsEquipos = XLSX.utils.json_to_sheet(resumenEquipos);
+        XLSX.utils.book_append_sheet(wb, wsEquipos, "Resumen Equipos");
+
+        const vendedores = dataVendedores.map(x => ({
+            Equipo: x.equipo,
+            "Empleado Ventas": x.empleadoVentas,
+            Venta: x.venta,
+            Meta: x.meta,
+            "Cumplimiento %": x.cumplimientoPct,
+            Brecha: x.brecha
+        }));
+
+        const wsVendedores = XLSX.utils.json_to_sheet(vendedores);
+        XLSX.utils.book_append_sheet(wb, wsVendedores, "Vendedores");
+
+        const clientes = dataClientesTop.map(x => ({
+            Equipo: x.equipo,
+            Cliente: x.cardCode,
+            "Nombre Cliente": x.cardName,
+            Vendedor: x.empleadoVentas,
+            Venta: x.venta,
+            "% Aporte": x.aportePct
+        }));
+
+        const wsClientes = XLSX.utils.json_to_sheet(clientes);
+        XLSX.utils.book_append_sheet(wb, wsClientes, "Top Clientes");
+
+        const productos = dataProductos.map(x => ({
+            Equipo: x.equipo,
+            "Empleado Ventas": x.empleadoVentas,
+            Código: x.codigo,
+            Producto: x.producto,
+            Cantidad: x.cantidad,
+            Venta: x.venta
+        }));
+
+        const wsProductos = XLSX.utils.json_to_sheet(productos);
+        XLSX.utils.book_append_sheet(wb, wsProductos, "Productos");
+
+        const anio = document.getElementById("filtroAnio")?.value;
+        const mes = document.getElementById("filtroMes")?.value;
+
+        const nombreArchivo = `Reporte_Gerencial_${anio}_${mes}.xlsx`;
+
+        XLSX.writeFile(wb, nombreArchivo);
+    }
+
+
+
+
+
     if (btnActualizar) {
         btnActualizar.addEventListener("click", cargarReporte);
     }
 
     document.addEventListener("DOMContentLoaded", () => {
+
+        const btnExportar = document.getElementById("btnExportarExcel");
+
+        if (btnExportar) {
+            btnExportar.addEventListener("click", exportarExcelGerencial);
+        }
+
+
         if (!window.SpartanAuth) {
             console.error("SpartanAuth no está cargado");
             showError("Error de autenticación no disponible.");

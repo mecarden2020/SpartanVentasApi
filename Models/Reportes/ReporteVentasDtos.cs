@@ -31,7 +31,8 @@
     public class ReporteVentasProductoDto
     {
         public string Equipo { get; set; } = string.Empty;
-        public string ItemCode { get; set; } = string.Empty;
+        public string EmpleadoVentas { get; set; } = string.Empty;
+        public string Codigo { get; set; } = string.Empty;
         public string Producto { get; set; } = string.Empty;
         public decimal Cantidad { get; set; }
         public decimal Venta { get; set; }
