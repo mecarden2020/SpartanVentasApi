@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 using Dapper;
 using SpartanVentasApi.Models.Reportes;
 
+
+
 namespace SpartanVentasApi.Controllers
 {
     // ============================================================
@@ -334,6 +336,179 @@ namespace SpartanVentasApi.Controllers
         }
 
 
+
+        // ============================================================
+        // Meta Semanal Bono Químicos (Gerencia / Portal) Metodo
+        // ============================================================
+
+        [Authorize]
+        [HttpGet("avance-semanal-bono")]
+        public async Task<IActionResult> GetAvanceSemanalBono(
+        [FromQuery] DateTime? desde = null,
+        [FromQuery] DateTime? hasta = null)
+            {
+            try
+            {
+                var rol = User.FindFirst(ClaimTypes.Role)?.Value
+                          ?? User.FindFirst("role")?.Value
+                          ?? string.Empty;
+
+                var slpClaim = User.FindFirst("SlpCode")?.Value
+                            ?? User.FindFirst("slpCode")?.Value;
+
+                int? slpCode = null;
+
+                if (rol.Equals("VENDEDOR", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.IsNullOrWhiteSpace(slpClaim) || !int.TryParse(slpClaim, out var slpParsed))
+                        return Unauthorized("No se pudo resolver el SlpCode del vendedor autenticado.");
+
+                    slpCode = slpParsed;
+                }
+
+                var fechaDesde = desde?.Date ?? DateTime.Today.AddDays(-7);
+                var fechaHasta = hasta?.Date ?? DateTime.Today;
+
+                using var cn = new SqlConnection(_config.GetConnectionString("SAP"));
+
+                await cn.OpenAsync();
+
+                var data = await cn.QueryAsync<VentasSemanalesDto>(
+                    "rpt.sp_VentasSemanalesQuimicos",
+                    new
+                    {
+                        Desde = fechaDesde,
+                        Hasta = fechaHasta,
+                        SlpCode = slpCode,
+                        Division = (string?)null
+                    },
+                    commandType: CommandType.StoredProcedure
+                );
+
+                var fila = data.FirstOrDefault();
+
+                if (fila == null)
+                {
+                    return Ok(new
+                    {
+                        ok = true,
+                        data = new VentasSemanalesDto
+                        {
+                            Year = fechaHasta.Year,
+                            MesNum = fechaHasta.Month,
+                            Mes = fechaHasta.ToString("MMMM"),
+                            Facturas = 0,
+                            Pedidos = 0,
+                            Entregas = 0,
+                            Total = 0,
+                            MetaSemanal = 0,
+                            CumplimientoPct = 0
+                        },
+                        rango = new
+                        {
+                            desde = fechaDesde.ToString("yyyy-MM-dd"),
+                            hasta = fechaHasta.ToString("yyyy-MM-dd")
+                        }
+                    });
+                }
+
+                // TODO:
+                // Reemplazar esta lógica por tu meta semanal real.
+                // Por ahora: ejemplo simple usando meta fija o cálculo provisional.
+                decimal metaSemanal = await ObtenerMetaQuimicosAsync(cn, fila.SlpCode, fechaDesde, fechaHasta);
+
+                fila.MetaSemanal = metaSemanal;
+                fila.CumplimientoPct = metaSemanal > 0
+                    ? Math.Round((fila.Total / metaSemanal) * 100m, 2)
+                    : 0m;
+                // ===============================================================================
+                return Ok(new
+                {
+                    ok = true,
+
+                    // 🔍 DEBUG TEMPORAL
+                    debug = new
+                    {
+                        slpCodeToken = slpCode,
+                        slpCodeFila = fila.SlpCode,
+                        fechaDesde = fechaDesde.ToString("yyyy-MM-dd"),
+                        fechaHasta = fechaHasta.ToString("yyyy-MM-dd"),
+                        facturas = fila.Facturas,
+                        pedidos = fila.Pedidos,
+                        entregas = fila.Entregas,
+                        total = fila.Total,
+                        metaCalculada = metaSemanal,
+                        cumplimiento = fila.CumplimientoPct
+                    },
+
+                    // 👉 DATA REAL
+                    data = fila,
+
+                    rango = new
+                    {
+                        desde = fechaDesde.ToString("yyyy-MM-dd"),
+                        hasta = fechaHasta.ToString("yyyy-MM-dd")
+                    }
+                });
+
+                // ==============================================================================
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    ok = false,
+                    message = "Error al obtener el avance semanal del bono.",
+                    detail = ex.Message
+                });
+            }
+        }
+
+        private async Task<decimal> ObtenerMetaQuimicosAsync(
+            SqlConnection cn,
+            int slpCode,
+            DateTime desde,
+            DateTime hasta)
+        {
+            // OPCIÓN PROVISIONAL:
+            // Si aún no tienes tabla/meta semanal oficial,
+            // puedes derivar desde OSLP metas mensuales.
+            // Ajusta según tu lógica real.
+
+            var mes = hasta.Month;
+
+            string sql = @"
+                        SELECT
+                            CASE @Mes
+                                WHEN 1 THEN ISNULL(U_METAS_Ene, 0)
+                                WHEN 2 THEN ISNULL(U_METAS_Feb, 0)
+                                WHEN 3 THEN ISNULL(U_METAS_Mar, 0)
+                                WHEN 4 THEN ISNULL(U_METAS_Abr, 0)
+                                WHEN 5 THEN ISNULL(U_METAS_May, 0)
+                                WHEN 6 THEN ISNULL(U_METAS_Jun, 0)
+                                WHEN 7 THEN ISNULL(U_METAS_Jul, 0)
+                                WHEN 8 THEN ISNULL(U_METAS_Ago, 0)
+                                WHEN 9 THEN ISNULL(U_METAS_Sep, 0)
+                                WHEN 10 THEN ISNULL(U_METAS_Oct, 0)
+                                WHEN 11 THEN ISNULL(U_METAS_Nov, 0)
+                                WHEN 12 THEN ISNULL(U_METAS_Dic, 0)
+                                ELSE 0
+                            END
+                        FROM OSLP
+                        WHERE SlpCode = @SlpCode;
+                        ";
+
+            var metaMensual = await cn.ExecuteScalarAsync<decimal?>(
+                sql,
+                new { Mes = mes, SlpCode = slpCode }
+            ) ?? 0m;
+
+            // Cálculo provisional: dividir meta mensual en 4 semanas
+            // var metaSemanal = metaMensual / 4m;
+            // return Math.Round(metaSemanal, 2);
+            return Math.Round(metaMensual, 2);
+        }
 
 
 

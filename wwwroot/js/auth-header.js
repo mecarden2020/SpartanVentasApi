@@ -157,7 +157,7 @@
         if (resp.status === 401 || resp.status === 403) {
             clearSession();
             goLogin();
-            return null;
+            
         }
 
         if (!resp.ok) {

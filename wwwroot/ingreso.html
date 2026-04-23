@@ -288,8 +288,132 @@
                 font-weight: 800;
                 text-align: center;
             }
+        .kpi-chart {
+            width: 120px;
+            height: 120px;
+        }
 
+        .avance-box {
+            min-width: 250px;
+            max-width: 290px;
+            background: #fff;
+            border: 1px solid #d7e3ef;
+            border-radius: 14px;
+            padding: 10px 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.05);
+            min-height: 175px;
+            height: auto;
+        }
 
+        .avance-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .avance-badge {
+            background: #0b5f86;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 10px;
+            line-height: 1;
+        }
+
+        .avance-meta {
+            font-size: 11px;
+            color: #6c757d;
+            white-space: nowrap;
+        }
+
+        .avance-body {
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        .avance-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 3px;
+        }
+
+            .avance-line span:last-child {
+                font-weight: 700;
+                color: #2f3a45;
+                white-space: nowrap;
+            }
+
+        .avance-sep {
+            margin: 6px 0;
+            border: 0;
+            border-top: 1px solid #e3e7eb;
+        }
+
+        .lbl {
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+            .lbl.fact {
+                color: #0d6efd;
+            }
+
+            .lbl.ped {
+                color: #f0ad00;
+            }
+
+            .lbl.ent {
+                color: #198754;
+            }
+
+            .lbl.total {
+                color: #fd7e14;
+            }
+
+            .lbl.meta {
+                color: #dc3545;
+            }
+
+            .lbl.pct {
+                color: #212529;
+            }
+
+        .avance-progress {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .avance-progress-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            transition: width .35s ease;
+            background: #dc3545;
+        }
+
+        .top-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .cumplimiento-valor {
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #f3f6f9;
+            display: inline-block;
+            min-width: 45px;
+            text-align: center;
+        }
         
     </style>
 </head>
@@ -349,13 +473,66 @@
                     <div id="tipMix" class="small text-muted mt-1" style="min-height:16px;"></div>
                 </div>
 
-                <!-- Dona Químicos: Meta vs Vendido -->
+                <!-- Dona Químicos: Factura, pedidos, entregas, Metas
                 <div class="donut-box">
                     <div style="font-size:12px">Químicos (Meta)</div>
                     <canvas id="donutQuimicos" width="80" height="80"></canvas>
                     <div id="tipQuimicos" class="donut-mini mt-1"></div>
-                    <!-- <div id="tipQuimicos" class="small text-muted mt-1" style="min-height:16px;"></div> -->
+                </div>-->
+                <!-- fin Dona Químicos -->
+
+                <div id="boxAvanceSemanal" class="avance-box">
+
+                    <div class="avance-head">
+                        <div class="avance-badge">Avance Quimicos</div>
+                        <div class="avance-meta" id="lblRangoSemanal">Rango: -- </div>
+                    </div>
+
+                    <div class="avance-body">
+
+                        <div class="avance-line">
+                            <span class="lbl fact">Facturados:</span>
+                            <span id="semFacturas">$0</span>
+                        </div>
+
+                        <div class="avance-line">
+                            <span class="lbl ped">Pedidos:</span>
+                            <span id="semPedidos">$0</span>
+                        </div>
+
+                        <div class="avance-line">
+                            <span class="lbl ent">Entregas:</span>
+                            <span id="semEntregas">$0</span>
+                        </div>
+
+                        <hr class="avance-sep">
+
+                        <div class="avance-line">
+                            <span class="lbl total">Total:</span>
+                            <span id="semTotal">$0</span>
+                        </div>
+
+                        <div class="avance-line">
+                            <span class="lbl meta">Meta:</span>
+                            <span id="semMeta">$0</span>
+                        </div>
+                     
+                        <div class="avance-line mt-1">
+                            <span class="lbl pct">Cumplimiento:</span>
+                            <span id="semCumplimiento" class="cumplimiento-valor">0%</span>
+                        </div>
+
+                        <div class="avance-progress">
+                            <div id="barCumplimientoSemanal" class="avance-progress-bar"></div>
+                        </div>
+
+                    </div>
+
                 </div>
+
+
+
+
 
             </div>
 
@@ -393,6 +570,7 @@
                         <div class="cierre-foot" id="footCierreSemana">—</div>
                     </div>
 
+                   
                     <!-- Cierre mensual -->
                     <div id="boxCierreMensual" class="cierre-box d-none" style="max-width:760px;">
                         <div class="cierre-head">
@@ -620,7 +798,7 @@
 
                 saveAuthSession(data);
 
-               
+
                 // 🔥 REDIRECCIÓN DINÁMICA
                 const redirect = new URLSearchParams(window.location.search).get("redirect");
 
@@ -735,9 +913,9 @@
             return true;
         }
 
-            /* ============================================================
-               UTIL
-            ============================================================ */
+        /* ============================================================
+           UTIL
+        ============================================================ */
         function formatMoney(n) {
             return Number(n || 0).toLocaleString("es-CL", {
                 style: "currency",
@@ -812,6 +990,7 @@
         // Endpoint: /api/dashboard/ventas-acct-resumen?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
         // ============================================================
 
+        let avanceSemanalActual = null;
         let chartMix = null;   // dona 3 segmentos (Químicos/Máquinas/Accesorios)
         let chartQ = null;     // dona meta químicos (Vendido/Faltante)
         let chartQMeta = null; // ✅ dona químicos meta
@@ -1002,11 +1181,11 @@
                 if (tipQ) {
                     const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CL")}`;
                     tipQ.innerHTML = `
-                <div class="rowx"><span class="lbl">Vendido:</span><span class="val">${fmt(vendido)}</span></div>
-                <div class="rowx"><span class="lbl">Meta:</span><span class="val">${fmt(meta)}</span></div>
-                <div class="rowx"><span class="lbl">Faltante:</span><span class="val">${fmt(faltante)}</span></div>
-                <div class="pct">${pct}%</div>
-            `;
+                    <div class="rowx"><span class="lbl">Vendido:</span><span class="val">${fmt(vendido)}</span></div>
+                    <div class="rowx"><span class="lbl">Meta:</span><span class="val">${fmt(meta)}</span></div>
+                    <div class="rowx"><span class="lbl">Faltante:</span><span class="val">${fmt(faltante)}</span></div>
+                    <div class="pct">${pct}%</div>
+                `;
                 }
 
                 // 🔹 Dibuja la dona de Químicos (Meta)
@@ -1066,10 +1245,10 @@
         }
 
 
-       
 
 
-       
+
+
 
 
 
@@ -1227,26 +1406,33 @@
             return { y, m, desdeMes, hastaMes, desde12, hasta12 };
         }
 
-        function renderDonutQuimicosMeta(res) {
+        // ===================================================================================
+
+
+        function renderDonutQuimicosMeta() {
             const el = document.getElementById("donutQuimicos");
             if (!el) return;
 
             const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CL")}`;
 
-            const meta = Number(res?.metaQuimicos || 0);
-            const vendido = Number(res?.quimicos?.neto || 0);
+            const facturado = Number(avanceSemanalActual?.facturas || 0);
+            const pedido = Number(avanceSemanalActual?.pedidos || 0);
+            const entrega = Number(avanceSemanalActual?.entregas || 0);
+            const meta = Number(avanceSemanalActual?.metaSemanal || 0);
 
-            const faltante = Math.max(0, meta - vendido);
-            const pctCumplido = meta > 0 ? Math.min(100, Math.round((vendido / meta) * 100)) : 0;
+            const total = facturado + pedido + entrega;
+            const faltante = Math.max(0, meta - total);
+            const pctCumplido = meta > 0 ? Math.min(100, Math.round((total / meta) * 100)) : 0;
             const pctFaltante = meta > 0 ? Math.max(0, 100 - pctCumplido) : 0;
 
-            // mini texto debajo (opcional)
             const tip = document.getElementById("tipQuimicos");
             if (tip) {
                 tip.innerHTML =
-                    `Vendido: <b>${fmt(vendido)}</b> | ` +
+                    `Facturado: <b>${fmt(facturado)}</b> | ` +
+                    `Pedido: <b>${fmt(pedido)}</b> | ` +
+                    `Entrega: <b>${fmt(entrega)}</b><br>` +
                     `Meta: <b>${fmt(meta)}</b> | ` +
-                    `Faltante: <b>${fmt(faltante)}</b> | ` +
+                    `Faltante: <b>${fmt(faltante)}</b><br>` +
                     `<b>${pctCumplido}%</b>`;
             }
 
@@ -1255,33 +1441,62 @@
             chartQMeta = new Chart(el, {
                 type: "doughnut",
                 data: {
-                    labels: ["Vendido", "Faltante"],
+                    labels: ["Avance", "Faltante"],
                     datasets: [{
-                        data: meta > 0 ? [vendido, faltante] : [vendido, 0],
+                        data: meta > 0 ? [total, faltante] : [total, 0],
                         borderWidth: 0,
-                        hoverOffset: 10
+                        hoverOffset: 8,
+                        backgroundColor: ["#0d6efd", "#e9ecef"]
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     cutout: "72%",
-                    layout: { padding: 10 },
-                    interaction: { mode: "nearest", intersect: true },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            enabled: false,
-                            external: externalDonutTooltipHandler,
                             callbacks: {
-                                title: () => "Químicos (Meta)",
-                                label: (ctx) => `${ctx.label}: ${fmt(ctx.raw)}`
+                                label: function (ctx) {
+                                    const label = ctx.label || "";
+                                    const value = ctx.raw || 0;
+                                    return `${label}: ${fmt(value)}`;
+                                }
                             }
                         }
                     }
-                }
+                },
+                plugins: [{
+                    id: "centerText",
+                    afterDraw(chart) {
+                        const metaArc = chart.getDatasetMeta(0).data[0];
+                        if (!metaArc) return;
+
+                        const { ctx } = chart;
+                        const x = metaArc.x;
+                        const y = metaArc.y;
+
+                        ctx.save();
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+
+                        ctx.fillStyle = "#e55353";
+                        ctx.font = "bold 18px Arial";
+                        ctx.fillText(`${pctFaltante}%`, x, y - 8);
+
+                        ctx.font = "bold 12px Arial";
+                        ctx.fillText("Faltante", x, y + 12);
+
+                        ctx.restore();
+                    }
+                }]
             });
         }
 
+
+
+
+        // ===================================================================================
 
         function obtenerRangoMesSeleccionado() {
             const mesSeleccionado = document.getElementById("txtHasta")?.value;
@@ -1298,6 +1513,38 @@
                 hasta: `${hasta.getFullYear()}-${pad(hasta.getMonth() + 1)}-${pad(hasta.getDate())}`
             };
         }
+
+
+        function aplicarColorCumplimiento(pct) {
+            const barra = document.getElementById("barCumplimientoSemanal");
+            const lbl = document.getElementById("semCumplimiento");
+
+            if (!barra || !lbl) {
+                console.warn("No se encontraron los elementos de cumplimiento.");
+                return;
+            }
+
+            const valor = Number(pct || 0);
+            const pctNormalizado = Math.max(0, Math.min(valor, 100));
+
+            barra.style.width = `${pctNormalizado}%`;
+            barra.setAttribute("aria-valuenow", pctNormalizado);
+
+            barra.classList.remove("bg-danger", "bg-warning", "bg-success");
+            lbl.classList.remove("text-danger", "text-warning", "text-success");
+
+            if (valor < 70) {
+                barra.classList.add("bg-danger");
+                lbl.classList.add("text-danger");
+            } else if (valor < 100) {
+                barra.classList.add("bg-warning");
+                lbl.classList.add("text-warning");
+            } else {
+                barra.classList.add("bg-success");
+                lbl.classList.add("text-success");
+            }
+        }
+
 
 
 
@@ -1385,7 +1632,7 @@
 
 
 
-        
+
 
 
         function renderVentasPorMes() {
@@ -1526,6 +1773,118 @@
             lista.appendChild(li2);
         }
 
+
+
+        function obtenerRangoSemanaActual() {
+            const hoy = new Date();
+            const dia = hoy.getDay(); // domingo=0, lunes=1 ...
+
+            const diffLunes = dia === 0 ? -6 : 1 - dia;
+
+            const desde = new Date(hoy);
+            desde.setDate(hoy.getDate() + diffLunes);
+
+            const hasta = new Date(desde);
+            hasta.setDate(desde.getDate() + 6);
+
+            const f = (d) => d.toISOString().slice(0, 10);
+
+            return {
+                desde: f(desde),
+                hasta: f(hasta)
+            };
+        }
+        // ===============  Avance Quimicos =============================
+        function obtenerRangoMes(fecha) {
+            const anio = fecha.getFullYear();
+            const mes = fecha.getMonth();
+
+            const desde = new Date(anio, mes, 1);
+            const hasta = new Date(anio, mes + 1, 0);
+
+            const f = (d) => d.toISOString().slice(0, 10);
+
+            return {
+                desde: f(desde),
+                hasta: f(hasta)
+            };
+        }
+        // ===============  Fin Avance Quimicos =============================
+
+        function formatearMonedaCL(valor) {
+            return `$${Number(valor || 0).toLocaleString("es-CL")}`;
+        }
+
+        function aplicarColorCumplimiento(pct) {
+            const barra = document.getElementById("barCumplimientoSemanal");
+            const lbl = document.getElementById("semCumplimiento");
+            if (!barra || !lbl) return;
+
+            const valor = Number(pct || 0);
+            const normalizado = Math.max(0, Math.min(valor, 100));
+
+            barra.style.width = `${normalizado}%`;
+
+            lbl.classList.remove("text-danger", "text-warning", "text-success");
+
+            if (valor < 70) {
+                barra.style.background = "#dc3545";
+                lbl.classList.add("text-danger");
+            } else if (valor < 100) {
+                barra.style.background = "#f0ad00";
+                lbl.classList.add("text-warning");
+            } else {
+                barra.style.background = "#198754";
+                lbl.classList.add("text-success");
+            }
+        }
+
+        async function cargarAvanceSemanalBono(desde, hasta) {
+            try {
+                const url = `/api/ventas/avance-semanal-bono?desde=${desde}&hasta=${hasta}`;
+                const json = await window.SpartanAuth.fetchAuth(url);
+
+                if (!json || !json.ok) {
+                    throw new Error("No se pudo obtener el avance semanal.");
+                }
+
+                const data = json.data || {};
+
+                document.getElementById("semFacturas").textContent = formatearMonedaCL(data.facturas);
+                document.getElementById("semPedidos").textContent = formatearMonedaCL(data.pedidos);
+                document.getElementById("semEntregas").textContent = formatearMonedaCL(data.entregas);
+                document.getElementById("semTotal").textContent = formatearMonedaCL(data.total);
+                document.getElementById("semMeta").textContent = formatearMonedaCL(data.metaSemanal);
+
+                const pct = Number(data.cumplimientoPct || 0);
+                document.getElementById("semCumplimiento").textContent = `${pct.toFixed(0)}%`;
+                aplicarColorCumplimiento(pct);
+
+                document.getElementById("lblRangoSemanal").textContent =
+                    `Rango: ${json?.rango?.desde || '--'} a ${json?.rango?.hasta || '--'}`;
+            } catch (error) {
+                console.error("Error avance semanal:", error);
+                document.getElementById("semFacturas").textContent = "$0";
+                document.getElementById("semPedidos").textContent = "$0";
+                document.getElementById("semEntregas").textContent = "$0";
+                document.getElementById("semTotal").textContent = "$0";
+                document.getElementById("semMeta").textContent = "$0";
+                document.getElementById("semCumplimiento").textContent = "0%";
+                document.getElementById("lblRangoSemanal").textContent = "Rango: --";
+                aplicarColorCumplimiento(0);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
         /* ============================================================
            LOGOUT
         ============================================================ */
@@ -1544,7 +1903,7 @@
             if (!ensureLoggedInOrRedirect()) return;
             if (!initAuthOrRedirect()) return;
 
-             // set mes por defecto (hoy)
+            // set mes por defecto (hoy)
             const hoy = new Date();
             const y = hoy.getFullYear();
             const m = String(hoy.getMonth() + 1).padStart(2, "0");
@@ -1563,13 +1922,21 @@
             // (opcional) cierres también al entrar
             await cargarCierres();
 
-            
+
         });
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const hoy = new Date();
+
+            const rango = obtenerRangoMes(hoy);
+            await cargarAvanceSemanalBono(rango.desde, rango.hasta);
+        });
+
 
     </script>
 
 
     <div id="donutTooltip" class="donut-tooltip" style="display:none;"></div>
-
+    <div style=" position: fixed; bottom: 5px; right: 10px; font-size: 11px; color: #999; opacity: 0.7; "> Powered by MCF-2025 </div>
 </body>
 </html>
