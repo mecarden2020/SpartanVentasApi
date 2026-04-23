@@ -346,7 +346,13 @@ WHERE ur.UsuarioId = @UserId;
             }
 
             // Expires
-            var expiresMinutes = double.TryParse(jwt["ExpiresInMinutes"], out var m) ? m : 60;
+            double expiresMinutes;
+
+            if (string.Equals(user.Role, "GERENCIA", StringComparison.OrdinalIgnoreCase))
+                expiresMinutes = 43200; // 30 días
+            else
+                expiresMinutes = 10080; // 7 días
+           // var expiresMinutes = double.TryParse(jwt["ExpiresInMinutes"], out var m) ? m :10080;
 
             var token = new JwtSecurityToken(
                 issuer,
