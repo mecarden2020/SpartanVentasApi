@@ -709,7 +709,7 @@
 
     <script>
         // ================== GUARDIA DE ROL (VENDEDORES) ==================
-        (function guardIngresoVendedor() {
+       /* (function guardIngresoVendedor() {
             const jwt = (localStorage.getItem("jwtToken") || localStorage.getItem("token") || "").trim();
             const urlToken = new URLSearchParams(window.location.search).get("token");
 
@@ -727,7 +727,24 @@
                 window.location.replace("gerencia_presupuesto_ventas.html");
                 return;
             }
+        })();*/
+
+        (function guardIngresoVendedor() {
+            const jwt = (localStorage.getItem("jwtToken") || localStorage.getItem("token") || "").trim();
+            const urlToken = new URLSearchParams(window.location.search).get("token");
+
+            // 🔥 CLAVE: si viene token por URL → NO bloquear
+            if (urlToken) return;
+
+            if (!jwt) {
+                window.location.replace("login.html");
+                return;
+            }
         })();
+
+
+
+
 
         // ===============================
         // Fetch con timeout (ANTI-PENDING)
