@@ -1076,6 +1076,80 @@ ORDER BY S.SlpName;", conn))
             catch (Exception ex) { return StatusCode(500, "Error: " + ex.Message); }
         }
 
+        [AllowAnonymous] // SOLO PARA PRUEBA EN SWAGGER / LOCAL
+        [HttpGet("proyeccion-cierre")]
+        public async Task<IActionResult> GetProyeccionCierre(
+             [FromQuery] int anio,
+             [FromQuery] int mes,
+             [FromQuery] string categoria = "Ventas Quimicos",
+             [FromQuery] string division = "Todas")
+        {
+            try
+            {
+                if (anio < 2000 || anio > 2100)
+                    return BadRequest("Año inválido.");
+
+                if (mes < 1 || mes > 12)
+                    return BadRequest("Mes inválido.");
+
+                await using var conn = new SqlConnection(ConnStr);
+
+                var desde = new DateTime(anio, mes, 1);
+                var hasta = desde.AddMonths(1).AddDays(-1);
+
+                using var multi = await conn.QueryMultipleAsync(
+                    "dbo.sp_BI_ProyeccionCierre",
+                    new
+                    {
+                        Desde = desde,
+                        Hasta = hasta,
+                        Categoria = categoria,
+                        Division = division
+                    },
+                    commandType: CommandType.StoredProcedure,
+                    commandTimeout: 180
+                );
+
+                var totales = await multi.ReadFirstOrDefaultAsync<dynamic>();
+                var equipos = (await multi.ReadAsync<dynamic>()).ToList();
+                var vendedores = (await multi.ReadAsync<dynamic>()).ToList();
+
+                return Ok(new
+                {
+                    totales = totales ?? new { facturas = 0, pedidos = 0, entregas = 0, total = 0 },
+                    equipos,
+                    vendedores
+                });
+            }
+            catch (SqlException ex)
+            {
+                return StatusCode(500, new
+                {
+                    mensaje = "SQL Error al obtener proyección de cierre",
+                    error = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    mensaje = "Error al obtener proyección de cierre",
+                    error = ex.Message
+                });
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
         // ============================================================
         // NUEVO: Cierre Semanal Gerencia (DETALLE por vendedor)
         // GET /api/gerencia/cierre-semanal-detalle?anio=2026&mes=1

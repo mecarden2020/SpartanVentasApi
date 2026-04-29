@@ -728,7 +728,7 @@
                 return;
             }
         })();*/
-
+        /*
         (function guardIngresoVendedor() {
             const jwt = (localStorage.getItem("jwtToken") || localStorage.getItem("token") || "").trim();
             const urlToken = new URLSearchParams(window.location.search).get("token");
@@ -740,7 +740,7 @@
                 window.location.replace("login.html");
                 return;
             }
-        })();
+        })();*/
 
 
 
@@ -813,18 +813,20 @@
                 const data = await res.json();
                 if (!data?.token) throw new Error("Respuesta sin JWT");
 
+                // ✅ Guardar sesión completa
                 saveAuthSession(data);
 
+                // ✅ Refuerzo directo del JWT
+                localStorage.setItem("jwtToken", data.token);
+                localStorage.setItem("token", data.token);
 
                 // 🔥 REDIRECCIÓN DINÁMICA
                 const redirect = new URLSearchParams(window.location.search).get("redirect");
 
                 if (redirect) {
-                    window.location.href = redirect;
+                    window.location.replace(redirect);
                     return true;
                 }
-
-
 
                 // limpiar token de URL
                 const url = new URL(window.location.href);
@@ -832,18 +834,18 @@
                 window.history.replaceState({}, document.title, url.toString());
 
                 return true;
+
             } catch (e) {
                 console.error("MagicLink error:", e);
 
-                // si no hay sesión, manda a login
                 const jwt = localStorage.getItem("jwtToken") || localStorage.getItem("token");
+
                 if (!jwt) {
                     alert("Link inválido o expirado. Inicia sesión.");
                     window.location.href = "login.html";
                     return false;
                 }
 
-                // si ya hay sesión, solo limpia URL y continúa
                 const url = new URL(window.location.href);
                 url.searchParams.delete("token");
                 window.history.replaceState({}, document.title, url.toString());
@@ -853,10 +855,17 @@
 
         function ensureLoggedInOrRedirect() {
             const jwt = localStorage.getItem("jwtToken") || localStorage.getItem("token");
+            const urlToken = new URLSearchParams(window.location.search).get("token");
+
+            if (!jwt && urlToken) {
+                return true;
+            }
+
             if (!jwt) {
                 window.location.href = "login.html";
                 return false;
             }
+
             return true;
         }
 
@@ -916,6 +925,11 @@
             currentRole = localStorage.getItem("currentRole") || "";
             currentAlias = localStorage.getItem("currentAlias") || "";
             currentLogin = localStorage.getItem("currentLogin") || "";
+
+            if (currentRole.toUpperCase() === "GERENCIA" || currentRole.toUpperCase() === "ADMIN") {
+                window.location.href = "/uploads/gerencia/repor_ventas.html";
+                return false;
+            }
 
             const permisosStr = localStorage.getItem("currentPermisos");
             currentPermisos = permisosStr ? JSON.parse(permisosStr) : [];
@@ -1916,7 +1930,11 @@
            INIT
         ============================================================ */
         document.addEventListener("DOMContentLoaded", async () => {
+
+            // 🔥 PRIMERO procesa el token
             await magicLinkBootstrap();
+
+            // 🔥 DESPUÉS valida sesión
             if (!ensureLoggedInOrRedirect()) return;
             if (!initAuthOrRedirect()) return;
 

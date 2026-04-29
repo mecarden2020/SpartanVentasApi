@@ -47,11 +47,11 @@
                 <div class="col-md-3">
                     <label class="form-label fw-bold">Categoría</label>
                     <select id="filtroCategoria" class="form-select">
-                        <option value="Ventas Químicos" selected>Ventas Químicos</option>
-                        <option value="Ventas Máquinas">Ventas Máquinas</option>
+                        <option value="Ventas Quimicos" selected>Ventas Químicos</option>
+                        <option value="Ventas Maquinas">Ventas Máquinas</option>
                         <option value="Ventas Accesorios">Ventas Accesorios</option>
-                        <option value="Ventas Repuestos Máquinas">Ventas Repuestos Máquinas</option>
-                        <option value="Ventas Servicio Técnico">Ventas Servicio Técnico</option>
+                        <option value="Ventas Repuestos Maquinas">Ventas Repuestos Máquinas</option>
+                        <option value="Ventas Servicio Tecnico">Ventas Servicio Técnico</option>
                         <option value="Otras Ventas">Otras Ventas</option>
                     </select>
                 </div>
@@ -59,7 +59,7 @@
                 <div class="col-md-3">
                     <label class="form-label fw-bold">División</label>
                     <select id="filtroDivision" class="form-select">
-                        <option value="">Todas</option>
+                        <option value="Todas">Todas</option>
                         <option value="División Industrial">División Industrial</option>
                         <option value="División Health Care">División Health Care</option>
                         <option value="División Food y Beverages">División Food y Beverages</option>
@@ -159,6 +159,58 @@
                 </table>
             </div>
         </div>
+
+        <!-- RESUMEN PROYECCION CIERRE -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Resumen Proyección Cierre</h5>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Equipo</th>
+                                <th class="text-end">Proyección Cierre Equipo</th>
+                                <th class="text-end">Meta Total Equipo</th>
+                                <th class="text-end">Diferencia Proyectada</th>
+                                <th class="text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyResumenProyeccionCierre"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- DETALLE PROYECCION CIERRE -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Detalle Proyección Cierre</h5>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="selectEquipoProyeccionCierre" class="form-label">Equipo</label>
+                        <select id="selectEquipoProyeccionCierre" class="form-select form-select-sm"></select>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Vendedor</th>
+                                <th class="text-end">Proyección Cierre</th>
+                                <th class="text-end">Meta Total Vendedor</th>
+                                <th class="text-end">Diferencia Proyectada</th>
+                                <th class="text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyDetalleProyeccionCierre"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
 
         <div class="table-card mt-3">
             <div class="section-title">Análisis por Vendedor</div>
@@ -284,8 +336,9 @@
 
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="/js/auth-header.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/auth-header.js"></script>
     <script src="/js/repor_ventas.js"></script>
 </body>
 </html>

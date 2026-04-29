@@ -26,6 +26,16 @@
     let dataVendedores = [];
     let dataProductos = [];
     let dataClientesTop = [];
+    let proyeccionCierreEquipos = [];
+    let proyeccionCierreVendedores = [];
+
+    function getEstadoColor(valor) {
+        return valor >= 0 ? 'success' : 'danger';
+    }
+
+    function getEstadoTexto(valor) {
+        return valor >= 0 ? 'Cumplido' : 'Oportunidad';
+    }
 
     function formatCurrency(value) {
         return new Intl.NumberFormat("es-CL", {
@@ -40,6 +50,33 @@
             maximumFractionDigits: 2
         }).format(value || 0);
     }
+
+
+
+    function getAuthHeaders() {
+        const token = localStorage.getItem("jwtToken") || localStorage.getItem("token") || "";
+
+        return token
+            ? { "Authorization": `Bearer ${token}` }
+            : {};
+    }
+
+    async function fetchJsonAuth(url) {
+        const response = await fetch(url, {
+            method: "GET",
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error HTTP ${response.status}`);
+        }
+
+        return await response.json();
+    }
+
+
+
+
 
     function getEstadoBadge(cumplimientoPct) {
         if (cumplimientoPct >= 100) {
@@ -96,6 +133,138 @@
         if (kpiBrecha) {
             kpiBrecha.style.color = brecha >= 0 ? "#7fb36a" : "#d36b6b";
         }
+    }
+
+
+    async function cargarProyeccionCierre() {
+        try {
+            const anio = document.getElementById("filtroAnio")?.value;
+            const mes = document.getElementById("filtroMes")?.value;
+            const categoria = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";
+            const division = document.getElementById("filtroDivision")?.value || "Todas";
+
+            const url = `/api/gerencia/proyeccion-cierre?anio=${anio}&mes=${mes}&categoria=${encodeURIComponent(categoria)}&division=${encodeURIComponent(division)}`;
+
+            const response = await fetch(url, {
+                headers: {
+                    "Authorization": `Bearer ${localStorage.getItem("jwtToken") || localStorage.getItem("token") || ""}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("Error al cargar proyección de cierre");
+            }
+
+            const data = await fetchJsonAuth(url);
+
+            proyeccionCierreEquipos = data.equipos || [];
+            proyeccionCierreVendedores = data.vendedores || [];
+
+            renderResumenProyeccionCierre();
+            renderDetalleProyeccionCierre();
+
+
+        } catch (error) {
+            console.error("Error cargarProyeccionCierre:", error);
+        }
+    }
+
+
+    function cargarSelectEquipoProyeccionCierre() {
+        const select = document.getElementById("selectEquipoProyeccionCierre");
+        if (!select) return;
+
+        const equipoActual = select.value;
+
+        const equipos = [...new Set(proyeccionCierreVendedores.map(x => x.equipo))]
+            .filter(x => x)
+            .sort();
+
+        select.innerHTML = "";
+
+        equipos.forEach(equipo => {
+            select.innerHTML += `<option value="${equipo}">${equipo}</option>`;
+        });
+
+        if (equipoActual && equipos.includes(equipoActual)) {
+            select.value = equipoActual;
+        }
+
+        select.onchange = renderDetalleProyeccionCierre;
+    }
+
+    function renderResumenProyeccionCierre() {
+        const tbody = document.getElementById("tbodyResumenProyeccionCierre");
+        if (!tbody) return;
+
+        tbody.innerHTML = "";
+
+        proyeccionCierreEquipos.forEach(item => {
+            const proyeccion = Number(item.proyeccionCierre ?? item.total ?? 0);
+            const meta = Number(item.metaTotalEquipo ?? item.meta ?? 0);
+            const diferencia = proyeccion - meta;
+
+            const estadoTexto = diferencia >= 0 ? "Cumplido" : "Oportunidad";
+            const estadoClass = diferencia >= 0 ? "bg-success" : "bg-danger";
+
+            tbody.innerHTML += `
+            <tr>
+                <td>${item.equipo || "Sin Equipo"}</td>
+                <td class="text-end">${formatCurrency(proyeccion)}</td>
+                <td class="text-end">${formatCurrency(meta)}</td>
+                <td class="text-end">${formatCurrency(diferencia)}</td>
+                <td class="text-center">
+                    <span class="badge ${estadoClass}">${estadoTexto}</span>
+                </td>
+            </tr>
+        `;
+        });
+
+        cargarSelectEquipoProyeccionCierre();
+    }
+
+    function renderDetalleProyeccionCierre() {
+        const tbody = document.getElementById("tbodyDetalleProyeccionCierre");
+        const select = document.getElementById("selectEquipoProyeccionCierre");
+
+        if (!tbody || !select) return;
+
+        const equipoSeleccionado = select.value;
+
+        const vendedoresFiltrados = proyeccionCierreVendedores.filter(x =>
+            !equipoSeleccionado || x.equipo === equipoSeleccionado
+        );
+
+        tbody.innerHTML = "";
+
+        vendedoresFiltrados.forEach(item => {
+            const proyeccion = Number(item.proyeccionCierre ?? item.total ?? 0);
+            const meta = Number(item.metaTotalVendedor ?? item.meta ?? 0);
+            const diferencia = proyeccion - meta;
+
+            const estadoTexto = diferencia >= 0 ? "Cumplido" : "Oportunidad";
+            const estadoClass = diferencia >= 0 ? "bg-success" : "bg-danger";
+
+            tbody.innerHTML += `
+            <tr>
+                <td>${item.vendedor || ""}</td>
+                <td class="text-end">${formatCurrency(proyeccion)}</td>
+                <td class="text-end">${formatCurrency(meta)}</td>
+                <td class="text-end">${formatCurrency(diferencia)}</td>
+                <td class="text-center">
+                    <span class="badge ${estadoClass}">${estadoTexto}</span>
+                </td>
+            </tr>
+        `;
+        });
+    }
+
+    function formatMoney(value) {
+        return Number(value || 0).toLocaleString("es-CL", {
+            style: "currency",
+            currency: "CLP",
+            maximumFractionDigits: 0
+        });
     }
 
     function renderResumenEquipos(equipos) {
@@ -285,10 +454,10 @@
         });
     }
 
+
     async function cargarReporte() {
         try {
             hideError();
-            setLoading(true);
 
             const anio = filtroAnio?.value;
             const mes = filtroMes?.value;
@@ -305,16 +474,20 @@
                 params.append("division", division);
             }
 
-            const result = await window.SpartanAuth.fetchAuth(
-                `/api/ventas/reporte-gerencial?${params.toString()}`,
-                { method: "GET" }
-            );
+            const response = await fetchJsonAuth(`/api/ventas/reporte-gerencial?${params.toString()}`);
 
-            if (!result || !result.ok) {
-                throw new Error(result?.mensaje || "No fue posible obtener el reporte.");
+            console.log("RESPUESTA REPORTE:", response);
+
+            if (!response || response.ok === false) {
+                throw new Error(response?.mensaje || "No fue posible obtener el reporte.");
             }
 
-            const data = result.data || {};
+            const data = response.data ?? response ?? {};
+
+            console.log("DATA NORMALIZADA:", data);
+            console.log("KPIS:", data.kpis);
+            console.log("EQUIPOS:", data.equipos);
+
             const kpis = data.kpis || {};
             const equipos = Array.isArray(data.equipos) ? data.equipos : [];
             const vendedores = Array.isArray(data.vendedores) ? data.vendedores : [];
@@ -347,10 +520,14 @@
             renderDetalleProductos([]);
             renderClientesTop([]);
             destroyCharts();
-        } finally {
-            setLoading(false);
         }
     }
+
+
+
+
+
+
 
     function renderFiltrosEquipo() {
         const filtroVend = document.getElementById("filtroEquipoVendedor");
@@ -614,6 +791,8 @@
         });
     }
 
+   
+
     function exportarExcelGerencial() {
 
         const wb = XLSX.utils.book_new();
@@ -674,14 +853,19 @@
     }
 
 
-
+    async function actualizarDashboard() {
+        await Promise.allSettled([
+            cargarReporte(),
+            cargarProyeccionCierre()
+        ]);
+    }
 
 
     if (btnActualizar) {
-        btnActualizar.addEventListener("click", cargarReporte);
+        btnActualizar.addEventListener("click", actualizarDashboard);
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
 
         const btnExportar = document.getElementById("btnExportarExcel");
 
@@ -689,14 +873,11 @@
             btnExportar.addEventListener("click", exportarExcelGerencial);
         }
 
-
-        if (!window.SpartanAuth) {
-            console.error("SpartanAuth no está cargado");
-            showError("Error de autenticación no disponible.");
-            return;
-        }
-
-        cargarReporte();
+       
+        await Promise.allSettled([
+            cargarReporte(),
+            cargarProyeccionCierre()
+        ]);
     });
 
     document.addEventListener("change", (e) => {
@@ -707,5 +888,10 @@
         if (e.target && e.target.id === "filtroEquipoProducto") {
             actualizarVistaProductos();
         }
+
+        if (e.target && e.target.id === "selectEquipoProyeccionCierre") {
+            renderDetalleProyeccionCierre();
+        }
     });
+
 })();
