@@ -140,7 +140,14 @@
         try {
             const anio = document.getElementById("filtroAnio")?.value;
             const mes = document.getElementById("filtroMes")?.value;
-            const categoria = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";
+            /*const categoria = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";*/
+            let categoria = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";
+
+            categoria = categoria
+                .replace("Químicos", "Quimicos")
+                .replace("Máquinas", "Maquinas")
+                .replace("Técnico", "Tecnico");
+
             const division = document.getElementById("filtroDivision")?.value || "Todas";
 
             const url = `/api/gerencia/proyeccion-cierre?anio=${anio}&mes=${mes}&categoria=${encodeURIComponent(categoria)}&division=${encodeURIComponent(division)}`;
@@ -155,10 +162,17 @@
                 throw new Error("Error al cargar proyección de cierre");
             }
 
-            const data = await fetchJsonAuth(url);
+            const result = await fetchJsonAuth(url);
+            const data = result.data || {};   // 👈 ESTE ES EL FIX
+            // 🔍 DEBUG (AQUÍ VA)
+            console.log("DATA PROYECCION:", data);
 
             proyeccionCierreEquipos = data.equipos || [];
             proyeccionCierreVendedores = data.vendedores || [];
+
+            // 🔍 DEBUG (AQUÍ TAMBIÉN)
+            console.log("EQUIPOS PROYECCION:", proyeccionCierreEquipos);
+            console.log("VENDEDORES PROYECCION:", proyeccionCierreVendedores);
 
             renderResumenProyeccionCierre();
             renderDetalleProyeccionCierre();
@@ -227,6 +241,9 @@
         const tbody = document.getElementById("tbodyDetalleProyeccionCierre");
         const select = document.getElementById("selectEquipoProyeccionCierre");
 
+        const kpiTotalEquipo = document.getElementById("kpiTotalProyectadoEquipo");
+        const kpiMetaEquipo = document.getElementById("kpiMetaProyectadaEquipo");
+
         if (!tbody || !select) return;
 
         const equipoSeleccionado = select.value;
@@ -235,20 +252,36 @@
             !equipoSeleccionado || x.equipo === equipoSeleccionado
         );
 
+        const resumenEquipo = proyeccionCierreEquipos.find(x => x.equipo === equipoSeleccionado);
+
+        if (kpiTotalEquipo) {
+            kpiTotalEquipo.textContent = formatCurrency(resumenEquipo?.proyeccionCierre ?? 0);
+        }
+
+        if (kpiMetaEquipo) {
+            kpiMetaEquipo.textContent = formatCurrency(resumenEquipo?.metaTotalEquipo ?? 0);
+        }
+
         tbody.innerHTML = "";
 
         vendedoresFiltrados.forEach(item => {
-            const proyeccion = Number(item.proyeccionCierre ?? item.total ?? 0);
+            const facturas = Number(item.facturas ?? 0);
+            const pedidos = Number(item.pedidos ?? 0);
+            const entregas = Number(item.entregas ?? 0);
+            const total = Number(item.proyeccionCierre ?? item.total ?? 0);
             const meta = Number(item.metaTotalVendedor ?? item.meta ?? 0);
-            const diferencia = proyeccion - meta;
+            const diferencia = Number(item.diferenciaProyectada ?? (total - meta));
 
             const estadoTexto = diferencia >= 0 ? "Cumplido" : "Oportunidad";
-            const estadoClass = diferencia >= 0 ? "bg-success" : "bg-danger";
+            const estadoClass = diferencia >= 0 ? "badge-ok" : "badge-low";
 
             tbody.innerHTML += `
             <tr>
                 <td>${item.vendedor || ""}</td>
-                <td class="text-end">${formatCurrency(proyeccion)}</td>
+                <td class="text-end">${formatCurrency(facturas)}</td>
+                <td class="text-end">${formatCurrency(pedidos)}</td>
+                <td class="text-end">${formatCurrency(entregas)}</td>
+                <td class="text-end">${formatCurrency(total)}</td>
                 <td class="text-end">${formatCurrency(meta)}</td>
                 <td class="text-end">${formatCurrency(diferencia)}</td>
                 <td class="text-center">
@@ -258,6 +291,11 @@
         `;
         });
     }
+
+
+
+
+
 
     function formatMoney(value) {
         return Number(value || 0).toLocaleString("es-CL", {
@@ -461,7 +499,12 @@
 
             const anio = filtroAnio?.value;
             const mes = filtroMes?.value;
-            const categoriaVenta = filtroCategoria?.value;
+            /*const categoriaVenta = filtroCategoria?.value;*/
+            let categoriaVenta = filtroCategoria?.value || "Ventas Quimicos";
+            categoriaVenta = categoriaVenta
+                .replace("Químicos", "Quimicos")
+                .replace("Máquinas", "Maquinas")
+                .replace("Técnico", "Tecnico");
             const division = filtroDivision?.value;
 
             const params = new URLSearchParams({
@@ -852,6 +895,10 @@
         XLSX.writeFile(wb, nombreArchivo);
     }
 
+    /*
+    async function actualizarDashboard() {
+        await cargarProyeccionCierre();
+    }*/
 
     async function actualizarDashboard() {
         await Promise.allSettled([
@@ -861,37 +908,29 @@
     }
 
 
+
     if (btnActualizar) {
         btnActualizar.addEventListener("click", actualizarDashboard);
     }
 
-    document.addEventListener("DOMContentLoaded", async () => {
 
+
+    document.addEventListener("DOMContentLoaded", async () => {
         const btnExportar = document.getElementById("btnExportarExcel");
 
         if (btnExportar) {
             btnExportar.addEventListener("click", exportarExcelGerencial);
         }
 
-       
-        await Promise.allSettled([
-            cargarReporte(),
-            cargarProyeccionCierre()
-        ]);
+        await actualizarDashboard();
     });
 
     document.addEventListener("change", (e) => {
-        if (e.target && e.target.id === "filtroEquipoVendedor") {
-            actualizarVistaVendedores();
-        }
-
-        if (e.target && e.target.id === "filtroEquipoProducto") {
-            actualizarVistaProductos();
-        }
-
         if (e.target && e.target.id === "selectEquipoProyeccionCierre") {
             renderDetalleProyeccionCierre();
         }
     });
 
 })();
+
+

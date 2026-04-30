@@ -60,9 +60,9 @@
                     <label class="form-label fw-bold">División</label>
                     <select id="filtroDivision" class="form-select">
                         <option value="Todas">Todas</option>
-                        <option value="División Industrial">División Industrial</option>
-                        <option value="División Health Care">División Health Care</option>
-                        <option value="División Food y Beverages">División Food y Beverages</option>
+                        <option value="Division Industrial">División Industrial</option>
+                        <option value="Division Health Care">División Health Care</option>
+                        <option value="Division Food y Beverages">División Food y Beverages</option>
                     </select>
                 </div>
 
@@ -182,6 +182,25 @@
             </div>
         </div>
 
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="kpi-card">
+                    <div class="kpi-label">TOTAL PROYECTADO EQUIPO</div>
+                    <div id="kpiTotalProyectadoEquipo" class="kpi-value">$0</div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="kpi-card">
+                    <div class="kpi-label">META TOTAL EQUIPO</div>
+                    <div id="kpiMetaProyectadaEquipo" class="kpi-value">$0</div>
+                </div>
+            </div>
+        </div>
+
+
+
         <!-- DETALLE PROYECCION CIERRE -->
         <div class="card mb-3">
             <div class="card-body">
@@ -199,7 +218,10 @@
                         <thead>
                             <tr>
                                 <th>Vendedor</th>
-                                <th class="text-end">Proyección Cierre</th>
+                                <th class="text-end">Facturas</th>
+                                <th class="text-end">Pedidos</th>
+                                <th class="text-end">Entregas</th>
+                                <th class="text-end">Total</th>
                                 <th class="text-end">Meta Total Vendedor</th>
                                 <th class="text-end">Diferencia Proyectada</th>
                                 <th class="text-center">Estado</th>

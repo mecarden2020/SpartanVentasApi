@@ -61,12 +61,13 @@ namespace SpartanVentasApi.Controllers
         // ============================================================
         // Reporte Ventas Gerencial (Gerencia / Portal) Metodo
         // ============================================================
+        [AllowAnonymous]
         [HttpGet("reporte-gerencial")]
         public async Task<IActionResult> GetReporteGerencial(
-    [FromQuery] int anio,
-    [FromQuery] int mes,
-    [FromQuery] string? categoriaVenta = null,
-    [FromQuery] string? division = null)
+            [FromQuery] int anio,
+            [FromQuery] int mes,
+            [FromQuery] string? categoriaVenta = null,
+            [FromQuery] string? division = null)
         {
             try
             {
@@ -76,13 +77,24 @@ namespace SpartanVentasApi.Controllers
                 if (mes < 1 || mes > 12)
                     return BadRequest(new { ok = false, mensaje = "El mes debe estar entre 1 y 12." });
 
+
                 categoriaVenta = string.IsNullOrWhiteSpace(categoriaVenta)
-                    ? null
-                    : categoriaVenta.Trim();
+                        ? null
+                        : categoriaVenta.Trim()
+                            .Replace("Químicos", "Quimicos")
+                            .Replace("Máquinas", "Maquinas")
+                            .Replace("Técnico", "Tecnico")
+                            .Replace("á", "a")
+                            .Replace("é", "e")
+                            .Replace("í", "i")
+                            .Replace("ó", "o")
+                            .Replace("ú", "u");
 
                 division = string.IsNullOrWhiteSpace(division)
-                    ? null
+                    ? "Todas"
                     : division.Trim();
+
+
 
                 using var connection = new SqlConnection(_config.GetConnectionString("SAP"));
                 await connection.OpenAsync();

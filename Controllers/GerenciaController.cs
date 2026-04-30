@@ -254,6 +254,70 @@ ORDER BY c.Anio, c.MesNum;";
                 ?? "";
         }
 
+        private static string NormalizarCategoria(string categoria)
+        {
+            return (categoria ?? "Ventas Quimicos")
+                .Replace("Químicos", "Quimicos")
+                .Replace("Máquinas", "Maquinas")
+                .Replace("Técnico", "Tecnico")
+                .Replace("á", "a")
+                .Replace("é", "e")
+                .Replace("í", "i")
+                .Replace("ó", "o")
+                .Replace("ú", "u")
+                .Trim();
+        }
+
+        private static string GetSqlMetasVendedores(int mes)
+        {
+            var campoMeta = mes switch
+            {
+                1 => "U_METAS_Ene",
+                2 => "U_METAS_Feb",
+                3 => "U_METAS_Mar",
+                4 => "U_METAS_Abr",
+                5 => "U_METAS_May",
+                6 => "U_METAS_Jun",
+                7 => "U_METAS_Jul",
+                8 => "U_METAS_Ago",
+                9 => "U_METAS_Sep",
+                10 => "U_METAS_Oct",
+                11 => "U_METAS_Nov",
+                12 => "U_METAS_Dic",
+                _ => "U_METAS_Ene"
+            };
+
+            return $@"
+                    SELECT
+                        CASE 
+                            WHEN U_Div_Pref = 'BSC' THEN 'Equipo Nelson Norambuena'
+                            WHEN U_Div_Pref IN ('FB','IN') THEN 'Equipo Claudia Borquez'
+                            WHEN U_Div_Pref = 'HC' THEN 'Equipo Ives Camousseight'
+                            WHEN U_Div_Pref = 'IND' THEN 'Equipo Alberto Damm'
+                            WHEN U_Div_Pref = 'IND_HL' THEN 'Equipo Hernan Lopez'
+                            WHEN U_Div_Pref = 'IND_PR' THEN 'Equipo Patricio Roco'
+                            ELSE 'Sin Equipo'
+                        END AS Equipo,
+                        SlpName AS Vendedor,
+                        CAST(ISNULL({campoMeta}, 0) AS decimal(19,2)) AS Meta
+                    FROM OSLP
+                    WHERE Active = 'Y';";
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         private async Task<int?> GetUserIdByUsername(SqlConnection conn, string username)
         {
             if (string.IsNullOrWhiteSpace(username)) return null;
@@ -1076,13 +1140,13 @@ ORDER BY S.SlpName;", conn))
             catch (Exception ex) { return StatusCode(500, "Error: " + ex.Message); }
         }
 
-        [AllowAnonymous] // SOLO PARA PRUEBA EN SWAGGER / LOCAL
+        [Authorize(Roles = "GERENCIA,ADMIN")]
         [HttpGet("proyeccion-cierre")]
         public async Task<IActionResult> GetProyeccionCierre(
-             [FromQuery] int anio,
-             [FromQuery] int mes,
-             [FromQuery] string categoria = "Ventas Quimicos",
-             [FromQuery] string division = "Todas")
+    [FromQuery] int anio,
+    [FromQuery] int mes,
+    [FromQuery] string categoria = "Ventas Quimicos",
+    [FromQuery] string division = "Todas")
         {
             try
             {
@@ -1092,10 +1156,13 @@ ORDER BY S.SlpName;", conn))
                 if (mes < 1 || mes > 12)
                     return BadRequest("Mes inválido.");
 
-                await using var conn = new SqlConnection(ConnStr);
+                categoria = NormalizarCategoria(categoria);
+                division = string.IsNullOrWhiteSpace(division) ? "Todas" : division;
 
                 var desde = new DateTime(anio, mes, 1);
                 var hasta = desde.AddMonths(1).AddDays(-1);
+
+                await using var conn = new SqlConnection(ConnStr);
 
                 using var multi = await conn.QueryMultipleAsync(
                     "dbo.sp_BI_ProyeccionCierre",
@@ -1110,21 +1177,100 @@ ORDER BY S.SlpName;", conn))
                     commandTimeout: 180
                 );
 
-                var totales = await multi.ReadFirstOrDefaultAsync<dynamic>();
-                var equipos = (await multi.ReadAsync<dynamic>()).ToList();
-                var vendedores = (await multi.ReadAsync<dynamic>()).ToList();
+                var totalesSp = await multi.ReadFirstOrDefaultAsync<ProyeccionCierreTotalesDto>();
+                var equiposSp = (await multi.ReadAsync<ProyeccionCierreEquipoBaseDto>()).ToList();
+                var vendedoresSp = (await multi.ReadAsync<ProyeccionCierreVendedorBaseDto>()).ToList();
+
+                var metasVendedores = (await conn.QueryAsync<MetaVendedorDto>(
+                    GetSqlMetasVendedores(mes)
+                )).ToList();
+
+                var metasEquipos = metasVendedores
+                    .GroupBy(x => x.Equipo)
+                    .Select(g => new
+                    {
+                        Equipo = g.Key,
+                        Meta = g.Sum(x => x.Meta)
+                    })
+                    .ToList();
+
+                var equipos = equiposSp.Select(x =>
+                {
+                    var meta = metasEquipos.FirstOrDefault(m => m.Equipo == x.Equipo)?.Meta ?? 0;
+                    var diferencia = x.Total - meta;
+
+                    return new
+                    {
+                        equipo = x.Equipo,
+                        facturas = x.Facturas,
+                        pedidos = x.Pedidos,
+                        entregas = x.Entregas,
+                        proyeccionCierre = x.Total,
+                        metaTotalEquipo = meta,
+                        diferenciaProyectada = diferencia,
+                        cumplimientoPct = meta > 0 ? Math.Round((x.Total / meta) * 100, 2) : 0,
+                        estado = diferencia >= 0 ? "Cumplido" : "Oportunidad"
+                    };
+                }).OrderByDescending(x => x.proyeccionCierre).ToList();
+
+                var vendedores = vendedoresSp.Select(x =>
+                {
+                    var meta = metasVendedores
+                        .FirstOrDefault(m =>
+                            m.Equipo == x.Equipo &&
+                            m.Vendedor.Trim().ToUpper() == (x.Vendedor ?? "").Trim().ToUpper()
+                        )?.Meta ?? 0;
+
+                    var diferencia = x.Total - meta;
+
+                    return new
+                    {
+                        year = x.YEAR,
+                        mes = x.Mes,
+                        equipo = x.Equipo,
+                        div = x.Div,
+                        vendedor = x.Vendedor,
+                        facturas = x.Facturas,
+                        pedidos = x.Pedidos,
+                        entregas = x.Entregas,
+                        proyeccionCierre = x.Total,
+                        metaTotalVendedor = meta,
+                        diferenciaProyectada = diferencia,
+                        cumplimientoPct = meta > 0 ? Math.Round((x.Total / meta) * 100, 2) : 0,
+                        estado = diferencia >= 0 ? "Cumplido" : "Oportunidad"
+                    };
+                }).OrderBy(x => x.equipo).ThenByDescending(x => x.proyeccionCierre).ToList();
+
+                var metaTotal = metasEquipos.Sum(x => x.Meta);
+                var totalProyectado = totalesSp?.Total ?? 0;
+                var diferenciaTotal = totalProyectado - metaTotal;
 
                 return Ok(new
                 {
-                    totales = totales ?? new { facturas = 0, pedidos = 0, entregas = 0, total = 0 },
-                    equipos,
-                    vendedores
+                    ok = true,
+                    mensaje = "Proyección de cierre obtenida correctamente.",
+                    data = new
+                    {
+                        kpis = new
+                        {
+                            facturas = totalesSp?.Facturas ?? 0,
+                            pedidos = totalesSp?.Pedidos ?? 0,
+                            entregas = totalesSp?.Entregas ?? 0,
+                            proyeccionCierre = totalProyectado,
+                            metaTotal,
+                            diferenciaProyectada = diferenciaTotal,
+                            cumplimientoPct = metaTotal > 0 ? Math.Round((totalProyectado / metaTotal) * 100, 2) : 0
+                        },
+                        equipos,
+                        vendedores
+                    }
                 });
             }
             catch (SqlException ex)
             {
                 return StatusCode(500, new
                 {
+                    ok = false,
                     mensaje = "SQL Error al obtener proyección de cierre",
                     error = ex.Message
                 });
@@ -1133,6 +1279,7 @@ ORDER BY S.SlpName;", conn))
             {
                 return StatusCode(500, new
                 {
+                    ok = false,
                     mensaje = "Error al obtener proyección de cierre",
                     error = ex.Message
                 });
@@ -1662,6 +1809,45 @@ DROP TABLE #Filtrado;
             public string Cliente { get; set; } = "";
             public DateTime? FechaCreacion { get; set; }
         }
+
+
+        public sealed class ProyeccionCierreTotalesDto
+        {
+            public decimal Facturas { get; set; }
+            public decimal Pedidos { get; set; }
+            public decimal Entregas { get; set; }
+            public decimal Total { get; set; }
+        }
+
+        public sealed class ProyeccionCierreEquipoBaseDto
+        {
+            public string Equipo { get; set; } = "";
+            public decimal Facturas { get; set; }
+            public decimal Pedidos { get; set; }
+            public decimal Entregas { get; set; }
+            public decimal Total { get; set; }
+        }
+
+        public sealed class ProyeccionCierreVendedorBaseDto
+        {
+            public int YEAR { get; set; }
+            public string Mes { get; set; } = "";
+            public string Equipo { get; set; } = "";
+            public string Div { get; set; } = "";
+            public string Vendedor { get; set; } = "";
+            public decimal Facturas { get; set; }
+            public decimal Pedidos { get; set; }
+            public decimal Entregas { get; set; }
+            public decimal Total { get; set; }
+        }
+
+        public sealed class MetaVendedorDto
+        {
+            public string Equipo { get; set; } = "";
+            public string Vendedor { get; set; } = "";
+            public decimal Meta { get; set; }
+        }
+
 
 
 
