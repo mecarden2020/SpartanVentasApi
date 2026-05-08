@@ -1066,159 +1066,11 @@
     });
 
 
-    function getUserRole() {
-        return (
-            localStorage.getItem("role") ||
-            localStorage.getItem("rol") ||
-            localStorage.getItem("permiso") ||
-            ""
-        );
-    }
-
-    function esAdmin() {
-        const role = (getUserRole() || "").toUpperCase().trim();
-        console.log("ROL DETECTADO:", role);
-        return role === "ADMIN";
-    }
-
-
-
-
-    async function cargarEstadoCierreMes() {
-
-        console.log("Ejecutando cargarEstadoCierreMes");
-        console.log("ROL DETECTADO:", getUserRole());
-        console.log("Es admin:", esAdmin());
-
-        const anio = document.getElementById("anio").value;
-        const mes = document.getElementById("mes").value;
-        const categoriaVenta = document.getElementById("categoria").value;
-        const division = document.getElementById("division").value;
-
-        const panel = document.getElementById("panelCierreMes");
-        const badge = document.getElementById("badgeEstadoCierre");
-        const boton = document.getElementById("btnCerrarMes");
-
-        if (!panel || !badge || !boton) {
-            console.warn("No se encontró panel, badge o botón cierre mes");
-            return;
-        }
-
-        // =========================================================
-        // Mostrar panel de cierre SOLO a ADMIN
-        // =========================================================
-
-        if (!esAdmin()) {
-
-            // Ocultar panel completo
-            panel.setAttribute("hidden", "hidden");
-
-            panel.style.display = "none";
-            panel.style.visibility = "hidden";
-            panel.style.opacity = "0";
-
-            // Ocultar botón
-            boton.setAttribute("hidden", "hidden");
-
-            boton.style.display = "none";
-            boton.style.visibility = "hidden";
-            boton.style.opacity = "0";
-
-            console.log("PANEL Y BOTON OCULTOS");
-
-            return;
-        }
-
-        // =========================================================
-        // ADMIN
-        // =========================================================
-
-        panel.removeAttribute("hidden");
-
-        panel.style.display = "block";
-        panel.style.visibility = "visible";
-        panel.style.opacity = "1";
-
-        // Mostrar botón reproceso
-        boton.removeAttribute("hidden");
-
-        boton.style.display = "inline-block";
-        boton.style.visibility = "visible";
-        boton.style.opacity = "1";
-
-        console.log("PANEL Y BOTON MOSTRADOS");
-
-
-
-
-
-        // =========================================================
-        // Consultar estado cierre mensual
-        // =========================================================
-
-        const url =
-            `/api/gerencia/cierre-mensual?anio=${anio}` +
-            `&mes=${mes}` +
-            `&categoriaVenta=${encodeURIComponent(categoriaVenta)}` +
-            `&division=${encodeURIComponent(division)}`;
-
-        try {
-
-            const response = await fetch(url, {
-                headers: {
-                    "Authorization": "Bearer " + (localStorage.getItem("token") || "")
-                }
-            });
-
-            const result = await response.json();
-
-            console.log("RESPUESTA CIERRE:", result);
-
-            // =====================================================
-            // Sin cierre histórico
-            // =====================================================
-
-            if (!result.ok || !result.data || result.data.length === 0) {
-
-                badge.className = "badge bg-secondary";
-                badge.textContent = "Mes sin cierre histórico";
-
-                return;
-            }
-
-            // =====================================================
-            // Estado cierre
-            // =====================================================
-
-            const estado = result.data[0].estado || "CERRADO";
-
-            if (estado === "REPROCESADO") {
-
-                badge.className = "badge bg-warning text-dark";
-                badge.textContent = "MES REPROCESADO";
-
-            } else {
-
-                badge.className = "badge bg-success";
-                badge.textContent = "MES CERRADO";
-            }
-
-        } catch (error) {
-
-            console.error("Error cierre mensual:", error);
-
-            badge.className = "badge bg-danger";
-            badge.textContent = "Error cierre";
-        }
-    }
-          
-
     function getSesionActual() {
         const usuario =
             localStorage.getItem("currentLogin") ||
             localStorage.getItem("login") ||
             localStorage.getItem("nombre") ||
-            localStorage.getItem("usuario") ||
             "Sin usuario";
 
         let role =
@@ -1228,7 +1080,6 @@
             localStorage.getItem("currentRole") ||
             "";
 
-        // Fallback para cuenta admin
         if (!role && usuario.toLowerCase().includes("admin")) {
             role = "ADMIN";
         }
@@ -1237,20 +1088,7 @@
             role = "ADMIN";
         }
 
-        return {
-            usuario,
-            role
-        };
-    }
-
-    function getUserRole() {
-        return (getSesionActual().role || "").toUpperCase().trim();
-    }
-
-    function esAdmin() {
-        const role = getUserRole();
-        console.log("ROL DETECTADO:", role);
-        return role === "ADMIN";
+        return { usuario, role };
     }
 
     function getUserRole() {
@@ -1268,59 +1106,84 @@
         if (!info) return;
 
         const sesion = getSesionActual();
-
         info.textContent = `Usuario: ${sesion.usuario} | Rol: ${sesion.role || "Sin rol"}`;
     }
 
+    async function cargarEstadoCierreMes() {
+        console.log("Ejecutando cargarEstadoCierreMes");
+        console.log("Es admin:", esAdmin());
 
+        const panel = document.getElementById("panelCierreMes");
+        const badge = document.getElementById("badgeEstadoCierre");
+        const boton = document.getElementById("btnCerrarMes");
 
-
-    document.getElementById("btnCerrarMes").addEventListener("click", async () => {
-        const anio = document.getElementById("anio").value;
-        const mes = document.getElementById("mes").value;
-        const categoriaVenta = document.getElementById("categoria").value;
-        const division = document.getElementById("division").value;
-
-        const observacion = prompt("Ingrese observación del cierre/reproceso:", "Cierre mensual validado contra SAP");
-
-        if (observacion === null) return;
-
-        const confirmar = confirm(
-            `¿Confirmas cerrar/reprocesar el mes ${mes}/${anio}?\n\n` +
-            `Esta acción actualizará el cierre histórico y quedará auditada.`
-        );
-
-        if (!confirmar) return;
-
-        const url = `/api/gerencia/cerrar-mes?anio=${anio}&mes=${mes}&categoriaVenta=${encodeURIComponent(categoriaVenta)}&division=${encodeURIComponent(division)}&forzarReproceso=true&observacion=${encodeURIComponent(observacion)}`;
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Authorization": "Bearer " + localStorage.getItem("token")
-            }
-        });
-
-        const result = await response.json();
-
-        if (!result.ok) {
-            alert(result.mensaje || "Error al cerrar/reprocesar mes.");
+        if (!panel || !badge || !boton) {
+            console.warn("No se encontró panel, badge o botón cierre mes");
             return;
         }
 
-        alert(result.mensaje);
-        await cargarEstadoCierreMes();
-        await cargarReporte();
-    });
+        if (!esAdmin()) {
+            panel.style.display = "none";
+            panel.style.visibility = "hidden";
+            panel.style.opacity = "0";
 
+            boton.style.display = "none";
+            boton.style.visibility = "hidden";
+            boton.style.opacity = "0";
 
+            return;
+        }
 
+        panel.style.display = "block";
+        panel.style.visibility = "visible";
+        panel.style.opacity = "1";
+
+        boton.style.display = "inline-block";
+        boton.style.visibility = "visible";
+        boton.style.opacity = "1";
+
+        const anio = document.getElementById("filtroAnio")?.value;
+        const mes = document.getElementById("filtroMes")?.value;
+        const categoriaVenta = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";
+        const division = document.getElementById("filtroDivision")?.value || "Todas";
+
+        const url = `/api/gerencia/cierre-mensual?anio=${anio}&mes=${mes}&categoriaVenta=${encodeURIComponent(categoriaVenta)}&division=${encodeURIComponent(division)}`;
+
+        try {
+            const response = await fetch(url, {
+                headers: getAuthHeaders()
+            });
+
+            const result = await response.json();
+
+            if (!result.ok || !result.data || result.data.length === 0) {
+                badge.className = "badge bg-secondary";
+                badge.textContent = "Sin cierre";
+                return;
+            }
+
+            const estado = result.data[0].estado || "CERRADO";
+
+            if (estado === "REPROCESADO") {
+                badge.className = "badge bg-warning text-dark";
+                badge.textContent = "MES REPROCESADO";
+            } else {
+                badge.className = "badge bg-success";
+                badge.textContent = "MES CERRADO";
+            }
+
+        } catch (error) {
+            console.error("Error cierre mensual:", error);
+            badge.className = "badge bg-danger";
+            badge.textContent = "Error cierre";
+        }
+    }
 
     async function cerrarOReprocesarMes() {
-        const anio = document.getElementById("anio").value;
-        const mes = document.getElementById("mes").value;
-        const categoriaVenta = document.getElementById("categoria").value;
-        const division = document.getElementById("division").value;
+        const anio = document.getElementById("filtroAnio")?.value;
+        const mes = document.getElementById("filtroMes")?.value;
+        const categoriaVenta = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";
+        const division = document.getElementById("filtroDivision")?.value || "Todas";
 
         const observacion = prompt(
             "Ingrese observación del cierre/reproceso:",
@@ -1340,9 +1203,7 @@
 
         const response = await fetch(url, {
             method: "POST",
-            headers: {
-                "Authorization": "Bearer " + localStorage.getItem("token")
-            }
+            headers: getAuthHeaders()
         });
 
         const result = await response.json();
@@ -1353,10 +1214,49 @@
         }
 
         alert(result.mensaje);
-        await cargarEstadoCierreMes();
         await actualizarDashboard();
     }
 
+    document.addEventListener("DOMContentLoaded", async () => {
+        const btnExportar = document.getElementById("btnExportarExcel");
+        const btnCerrarMes = document.getElementById("btnCerrarMes");
+        const btnCerrarSesion = document.getElementById("btnCerrarSesion");
+
+        if (btnExportar) {
+            btnExportar.addEventListener("click", exportarExcelGerencial);
+        }
+
+        if (btnCerrarMes) {
+            btnCerrarMes.addEventListener("click", cerrarOReprocesarMes);
+        }
+
+        if (btnCerrarSesion) {
+            btnCerrarSesion.addEventListener("click", () => {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = "/login.html";
+            });
+        }
+
+        mostrarSesionActual();
+        await actualizarDashboard();
+    });
+
+    document.addEventListener("change", (e) => {
+        if (e.target && e.target.id === "filtroEquipoVendedor") {
+            renderDetalleVendedores(dataVendedores || []);
+            renderClientesTop(dataClientesTop || []);
+        }
+
+        if (e.target && e.target.id === "filtroEquipoProducto") {
+            renderDetalleProductos(dataProductos || []);
+        }
+
+        if (e.target && e.target.id === "selectEquipoProyeccionCierre") {
+            renderDetalleProyeccionCierre();
+        }
+    });
+    
 
 
 
