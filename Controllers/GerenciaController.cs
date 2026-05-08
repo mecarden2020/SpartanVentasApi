@@ -1782,6 +1782,129 @@ DROP TABLE #Filtrado;
         }
 
 
+        [Authorize(Roles = "ADMIN")]
+        [HttpPost("cerrar-mes")]
+        public async Task<IActionResult> CerrarMes(
+            [FromQuery] int anio,
+            [FromQuery] int mes,
+            [FromQuery] string categoriaVenta = "Ventas Quimicos",
+            [FromQuery] string? division = null,
+            [FromQuery] bool forzarReproceso = false,
+            [FromQuery] string? observacion = null)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_config.GetConnectionString("SAP"));
+
+                var usuario = User?.Identity?.Name ?? "ADMIN";
+
+                var data = await connection.QueryAsync(
+                    "dbo.sp_BI_GenerarCierreMensualGerencial",
+                    new
+                    {
+                        Anio = anio,
+                        Mes = mes,
+                        CategoriaVenta = categoriaVenta,
+                        Division = string.IsNullOrWhiteSpace(division) || division == "Todas" ? null : division,
+                        UsuarioAccion = usuario,
+                        ForzarReproceso = forzarReproceso,
+                        Observacion = observacion
+                    },
+                    commandType: CommandType.StoredProcedure
+                );
+
+                return Ok(new
+                {
+                    ok = true,
+                    mensaje = forzarReproceso
+                        ? "Cierre mensual reprocesado correctamente."
+                        : "Cierre mensual generado correctamente.",
+                    data
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    ok = false,
+                    mensaje = "Error al generar/reprocesar el cierre mensual.",
+                    detalle = ex.Message
+                });
+            }
+        }
+
+        
+        [HttpGet("cierre-mensual")]
+        public async Task<IActionResult> GetCierreMensual(
+            [FromQuery] int anio,
+            [FromQuery] int mes,
+            [FromQuery] string categoriaVenta = "Ventas Quimicos",
+            [FromQuery] string? division = null)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_config.GetConnectionString("SAP"));
+
+                var sql = @"
+                            SELECT
+                                Anio,
+                                Mes,
+                                CategoriaVenta,
+                                Division,
+                                Equipo,
+                                Venta,
+                                Meta,
+                                CumplimientoPct,
+                                Brecha,
+                                Estado,
+                                EsReproceso,
+                                FechaCierre,
+                                UsuarioCierre,
+                                FechaReproceso,
+                                UsuarioReproceso,
+                                Observacion
+                            FROM dbo.BI_CierreMensualGerencial
+                            WHERE Anio = @Anio
+                              AND Mes = @Mes
+                              AND CategoriaVenta = @CategoriaVenta
+                              AND ISNULL(Division, '') = ISNULL(@Division, '')
+                            ORDER BY Venta DESC;
+                        ";
+
+                var data = await connection.QueryAsync(sql, new
+                {
+                    Anio = anio,
+                    Mes = mes,
+                    CategoriaVenta = categoriaVenta,
+                    Division = string.IsNullOrWhiteSpace(division) || division == "Todas" ? null : division
+                });
+
+                return Ok(new
+                {
+                    ok = true,
+                    data
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    ok = false,
+                    mensaje = "Error al consultar cierre mensual.",
+                    detalle = ex.Message
+                });
+            }
+        }
+
+
+
+
+
+
+
+
+
+
 
 
 

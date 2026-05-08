@@ -61,7 +61,7 @@ namespace SpartanVentasApi.Controllers
         // ============================================================
         // Reporte Ventas Gerencial (Gerencia / Portal) Metodo
         // ============================================================
-        [AllowAnonymous]
+
         [HttpGet("reporte-gerencial")]
         public async Task<IActionResult> GetReporteGerencial(
             [FromQuery] int anio,
@@ -77,28 +77,31 @@ namespace SpartanVentasApi.Controllers
                 if (mes < 1 || mes > 12)
                     return BadRequest(new { ok = false, mensaje = "El mes debe estar entre 1 y 12." });
 
-
                 categoriaVenta = string.IsNullOrWhiteSpace(categoriaVenta)
-                        ? null
-                        : categoriaVenta.Trim()
-                            .Replace("Químicos", "Quimicos")
-                            .Replace("Máquinas", "Maquinas")
-                            .Replace("Técnico", "Tecnico")
-                            .Replace("á", "a")
-                            .Replace("é", "e")
-                            .Replace("í", "i")
-                            .Replace("ó", "o")
-                            .Replace("ú", "u");
+                    ? null
+                    : categoriaVenta.Trim()
+                        .Replace("Químicos", "Quimicos")
+                        .Replace("Máquinas", "Maquinas")
+                        .Replace("Técnico", "Tecnico")
+                        .Replace("á", "a")
+                        .Replace("é", "e")
+                        .Replace("í", "i")
+                        .Replace("ó", "o")
+                        .Replace("ú", "u");
 
                 division = string.IsNullOrWhiteSpace(division)
                     ? "Todas"
                     : division.Trim();
 
-
+                var divisionSql = division == "Todas" ? null : division;
 
                 using var connection = new SqlConnection(_config.GetConnectionString("SAP"));
                 await connection.OpenAsync();
 
+                // ============================================================
+                // 1) Ejecutar SIEMPRE el SP dinámico para obtener detalles
+                //    Vendedores, Productos y ClientesTop
+                // ============================================================
                 using var multi = await connection.QueryMultipleAsync(
                     "dbo.sp_BI_ReporteGerencial",
                     new
@@ -111,18 +114,97 @@ namespace SpartanVentasApi.Controllers
                     commandType: CommandType.StoredProcedure
                 );
 
-                var kpis = await multi.ReadFirstOrDefaultAsync<ReporteVentasKpiDto>()
-                           ?? new ReporteVentasKpiDto();
+                var kpisDinamicos = await multi.ReadFirstOrDefaultAsync<ReporteVentasKpiDto>()
+                                 ?? new ReporteVentasKpiDto();
 
-                var equipos = (await multi.ReadAsync<ReporteVentasEquipoDto>()).ToList();
+                var equiposDinamicos = (await multi.ReadAsync<ReporteVentasEquipoDto>()).ToList();
                 var vendedores = (await multi.ReadAsync<ReporteVentasVendedorDto>()).ToList();
                 var productos = (await multi.ReadAsync<ReporteVentasProductoDto>()).ToList();
                 var clientesTop = (await multi.ReadAsync<ReporteVentasClienteTopDto>()).ToList();
 
+                // ============================================================
+                // 2) Revisar si existe cierre mensual histórico
+                // ============================================================
+                var cierreExiste = await connection.ExecuteScalarAsync<int>(@"
+            SELECT COUNT(1)
+            FROM dbo.BI_CierreMensualGerencial
+            WHERE Anio = @Anio
+              AND Mes = @Mes
+              AND CategoriaVenta = @CategoriaVenta
+              AND ISNULL(Division, '') = ISNULL(@Division, '');
+        ", new
+                {
+                    Anio = anio,
+                    Mes = mes,
+                    CategoriaVenta = categoriaVenta,
+                    Division = divisionSql
+                });
+
+                // ============================================================
+                // 3) Si existe cierre, reemplazar SOLO KPIs y Equipos
+                // ============================================================
+                if (cierreExiste > 0)
+                {
+                    var cierre = (await connection.QueryAsync<ReporteVentasEquipoDto>(@"
+                SELECT
+                    Equipo,
+                    Venta,
+                    Meta,
+                    CumplimientoPct,
+                    Brecha
+                FROM dbo.BI_CierreMensualGerencial
+                WHERE Anio = @Anio
+                  AND Mes = @Mes
+                  AND CategoriaVenta = @CategoriaVenta
+                  AND ISNULL(Division, '') = ISNULL(@Division, '')
+                ORDER BY Venta DESC;
+            ", new
+                    {
+                        Anio = anio,
+                        Mes = mes,
+                        CategoriaVenta = categoriaVenta,
+                        Division = divisionSql
+                    })).ToList();
+
+                    var ventaTotal = cierre.Sum(x => x.Venta);
+                    var metaTotal = cierre.Sum(x => x.Meta);
+
+                    var kpisHistoricos = new ReporteVentasKpiDto
+                    {
+                        VentaTotal = ventaTotal,
+                        MetaTotal = metaTotal,
+                        CumplimientoPct = metaTotal == 0
+                            ? 0
+                            : Math.Round((ventaTotal / metaTotal) * 100, 2),
+                        Brecha = ventaTotal - metaTotal
+                    };
+
+                    var responseHistorico = new ReporteVentasResponseDto
+                    {
+                        Kpis = kpisHistoricos,
+                        Equipos = cierre,
+
+                        // Detalle sigue viniendo del SP dinámico
+                        Vendedores = vendedores,
+                        Productos = productos,
+                        ClientesTop = clientesTop
+                    };
+
+                    return Ok(new
+                    {
+                        ok = true,
+                        mensaje = "Reporte gerencial obtenido desde cierre mensual histórico con detalle dinámico.",
+                        data = responseHistorico
+                    });
+                }
+
+                // ============================================================
+                // 4) Si no existe cierre, devolver todo dinámico
+                // ============================================================
                 var response = new ReporteVentasResponseDto
                 {
-                    Kpis = kpis,
-                    Equipos = equipos,
+                    Kpis = kpisDinamicos,
+                    Equipos = equiposDinamicos,
                     Vendedores = vendedores,
                     Productos = productos,
                     ClientesTop = clientesTop
@@ -154,7 +236,6 @@ namespace SpartanVentasApi.Controllers
                 });
             }
         }
-
 
 
         private class VentasResumenTempDto

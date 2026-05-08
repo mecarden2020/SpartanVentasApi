@@ -492,19 +492,19 @@
         });
     }
 
-
     async function cargarReporte() {
         try {
             hideError();
 
             const anio = filtroAnio?.value;
             const mes = filtroMes?.value;
-            /*const categoriaVenta = filtroCategoria?.value;*/
+
             let categoriaVenta = filtroCategoria?.value || "Ventas Quimicos";
             categoriaVenta = categoriaVenta
                 .replace("Químicos", "Quimicos")
                 .replace("Máquinas", "Maquinas")
                 .replace("Técnico", "Tecnico");
+
             const division = filtroDivision?.value;
 
             const params = new URLSearchParams({
@@ -537,19 +537,45 @@
             const productos = Array.isArray(data.productos) ? data.productos : [];
             const clientesTop = Array.isArray(data.clientesTop) ? data.clientesTop : [];
 
+            // =====================================
+            // Guardar datasets globales / locales
+            // =====================================
             dataEquipos = equipos;
             dataVendedores = vendedores;
             dataProductos = productos;
             dataClientesTop = clientesTop;
 
+            window.vendedoresGerencial = vendedores;
+            window.productosGerencial = productos;
+            window.clientesTopGerencial = clientesTop;
+
+            // =====================================
+            // Render principal
+            // =====================================
             renderKpis(kpis);
             renderResumenEquipos(equipos);
             renderCharts(equipos);
             renderFiltrosEquipo();
 
+            // =====================================
+            // Render detalle con filtro de equipo
+            // =====================================
+            renderDetalleVendedores(vendedores);
+            renderDetalleProductos(productos);
+            renderClientesTop(clientesTop);
+
         } catch (error) {
             console.error("Error al cargar reporte:", error);
             showError(error.message || "Error inesperado al cargar el reporte.");
+
+            dataEquipos = [];
+            dataVendedores = [];
+            dataProductos = [];
+            dataClientesTop = [];
+
+            window.vendedoresGerencial = [];
+            window.productosGerencial = [];
+            window.clientesTopGerencial = [];
 
             renderKpis({
                 ventaTotal: 0,
@@ -565,8 +591,6 @@
             destroyCharts();
         }
     }
-
-
 
 
 
@@ -609,107 +633,164 @@
         return `<span class="badge badge-low">Oportunidad</span>`;
     }
 
+    // ======================================================================
+
+
+    function normalizarTexto(valor) {
+        return (valor || "").toString().trim().toUpperCase();
+    }
+
+    function getEquipoSeleccionadoVendedor() {
+        const select = document.getElementById("filtroEquipoVendedor");
+        return select ? select.value : "";
+    }
+
+    function getEquipoSeleccionadoProducto() {
+        const select = document.getElementById("filtroEquipoProducto");
+        return select ? select.value : "";
+    }
+
+
     function renderDetalleVendedores(data) {
         const tbody = document.getElementById("tbodyDetalleVendedor");
         if (!tbody) return;
 
-        if (!data || data.length === 0) {
+        const equipoSeleccionado = document.getElementById("filtroEquipoVendedor")?.value?.trim() || "";
+
+        const filtrados = (data || []).filter(x => {
+            const equipoFila = (x.equipo ?? x.Equipo ?? "").trim();
+
+            if (!equipoSeleccionado || equipoSeleccionado === "Todos") return true;
+
+            return equipoFila === equipoSeleccionado;
+        });
+
+        console.log("Equipo seleccionado vendedor:", equipoSeleccionado);
+        console.log("Total vendedores:", data?.length || 0);
+        console.log("Filtrados vendedor:", filtrados.length);
+
+        if (filtrados.length === 0) {
             tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="text-center text-muted py-3">
-                        No hay detalle por vendedor para los filtros seleccionados.
-                    </td>
-                </tr>
-            `;
+            <tr>
+                <td colspan="7" class="text-center text-muted py-3">
+                    No hay detalle por vendedor para el equipo seleccionado.
+                </td>
+            </tr>
+        `;
             return;
         }
 
-        tbody.innerHTML = data.map(x => `
-            <tr>
-                <td>${x.equipo ?? ""}</td>
-                <td>${x.empleadoVentas ?? ""}</td>
-                <td class="text-end">${formatCurrency(x.venta ?? 0)}</td>
-                <td class="text-end">${formatCurrency(x.meta ?? 0)}</td>
-                <td class="text-end">${formatNumber(x.cumplimientoPct ?? 0)}%</td>
-                <td class="text-end">${formatCurrency(x.brecha ?? 0)}</td>
-                <td class="text-center">${getEstadoVendedor(x.cumplimientoPct ?? 0)}</td>
-            </tr>
-        `).join("");
+        tbody.innerHTML = filtrados.map(x => `
+        <tr>
+            <td>${x.equipo ?? x.Equipo ?? ""}</td>
+            <td>${x.empleadoVentas ?? x.EmpleadoVentas ?? ""}</td>
+            <td class="text-end">${formatCurrency(x.venta ?? x.Venta ?? 0)}</td>
+            <td class="text-end">${formatCurrency(x.meta ?? x.Meta ?? 0)}</td>
+            <td class="text-end">${formatNumber(x.cumplimientoPct ?? x.CumplimientoPct ?? 0)}%</td>
+            <td class="text-end">${formatCurrency(x.brecha ?? x.Brecha ?? 0)}</td>
+            <td class="text-center">${getEstadoVendedor(x.cumplimientoPct ?? x.CumplimientoPct ?? 0)}</td>
+        </tr>
+    `).join("");
     }
+
+
 
 
     function renderDetalleProductos(data) {
         const tbody = document.getElementById("tbodyDetalleProducto");
         if (!tbody) return;
 
-        if (!data || data.length === 0) {
+        const equipoSeleccionado = document.getElementById("filtroEquipoProducto")?.value?.trim() || "";
+
+        const filtrados = (data || []).filter(x => {
+            const equipoFila = (x.equipo ?? x.Equipo ?? "").trim();
+
+            if (!equipoSeleccionado || equipoSeleccionado === "Todos") return true;
+
+            return equipoFila === equipoSeleccionado;
+        });
+
+        console.log("Equipo seleccionado producto:", equipoSeleccionado);
+        console.log("Total productos:", data?.length || 0);
+        console.log("Filtrados producto:", filtrados.length);
+
+        if (filtrados.length === 0) {
             tbody.innerHTML = `
             <tr>
                 <td colspan="5" class="text-center text-muted py-3">
-                    No hay detalle por producto para los filtros seleccionados.
+                    No hay detalle por producto para el equipo seleccionado.
                 </td>
             </tr>
         `;
             return;
         }
 
-        tbody.innerHTML = data.map(x => `
+        tbody.innerHTML = filtrados.map(x => `
         <tr>
-            <td>${x.empleadoVentas ?? ""}</td>
-            <td>${x.codigo ?? ""}</td>
-            <td>${x.producto ?? ""}</td>
-            <td class="text-end">${formatNumber(x.cantidad ?? 0)}</td>
-            <td class="text-end">${formatCurrency(x.venta ?? 0)}</td>
+            <td>${x.empleadoVentas ?? x.EmpleadoVentas ?? ""}</td>
+            <td>${x.codigo ?? x.Codigo ?? ""}</td>
+            <td>${x.producto ?? x.Producto ?? ""}</td>
+            <td class="text-end">${formatNumber(x.cantidad ?? x.Cantidad ?? 0)}</td>
+            <td class="text-end">${formatCurrency(x.venta ?? x.Venta ?? 0)}</td>
         </tr>
     `).join("");
     }
 
-    function renderAnalisisProducto(productos, equipoSeleccionado) {
 
+
+    function renderAnalisisProducto(productos, equipoSeleccionado) {
         console.log("PRODUCTOS:", productos);
         console.log("EQUIPO SELECCIONADO:", equipoSeleccionado);
 
+        const equipo = equipoSeleccionado || getEquipoSeleccionadoProducto();
+
         const filtrados = (productos || [])
-            .filter(p => !equipoSeleccionado || (p.equipo && p.equipo === equipoSeleccionado))
-            .sort((a, b) => (b.venta || 0) - (a.venta || 0));
+            .filter(p => {
+                if (!equipo) return true;
 
-        const tbody = document.querySelector("#tblProductos tbody");
+                return normalizarTexto(p.equipo || p.Equipo) === normalizarTexto(equipo);
+            })
+            .sort((a, b) => ((b.venta ?? b.Venta ?? 0) - (a.venta ?? a.Venta ?? 0)));
+
+        const tbody = document.querySelector("#tblProductos tbody") || document.getElementById("tbodyDetalleProducto");
         if (!tbody) return;
-
-        tbody.innerHTML = "";
 
         if (!filtrados.length) {
             tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="text-center">
-                    No hay detalle por producto para los filtros seleccionados.
+                <td colspan="5" class="text-center text-muted py-3">
+                    No hay detalle por producto para el equipo seleccionado.
                 </td>
             </tr>`;
-            actualizarGraficoTopProductos([], []);
+
+            if (typeof actualizarGraficoTopProductos === "function") {
+                actualizarGraficoTopProductos([], []);
+            }
+
             return;
         }
 
-        filtrados.forEach(p => {
-            tbody.innerHTML += `
-            <tr>
-                <td>${p.empleadoVentas ?? ""}</td>
-                <td>${p.codigo ?? ""}</td>
-                <td>${p.producto ?? ""}</td>
-                <td class="text-end">${formatNumber(p.cantidad ?? 0)}</td>
-                <td class="text-end">${formatCurrency(p.venta ?? 0)}</td>
-            </tr>
-        `;
-        });
+        tbody.innerHTML = filtrados.map(p => `
+        <tr>
+            <td>${p.empleadoVentas ?? p.EmpleadoVentas ?? ""}</td>
+            <td>${p.codigo ?? p.Codigo ?? ""}</td>
+            <td>${p.producto ?? p.Producto ?? ""}</td>
+            <td class="text-end">${formatNumber(p.cantidad ?? p.Cantidad ?? 0)}</td>
+            <td class="text-end">${formatCurrency(p.venta ?? p.Venta ?? 0)}</td>
+        </tr>
+    `).join("");
 
         const top5 = filtrados.slice(0, 5);
 
-        actualizarGraficoTopProductos(
-            top5.map(x => x.producto),
-            top5.map(x => x.venta)
-        );
+        if (typeof actualizarGraficoTopProductos === "function") {
+            actualizarGraficoTopProductos(
+                top5.map(x => x.producto ?? x.Producto ?? ""),
+                top5.map(x => x.venta ?? x.Venta ?? 0)
+            );
+        }
     }
 
-
+    // ==================================================================
 
 
 
@@ -717,27 +798,47 @@
         const tbody = document.getElementById("tbodyTopClientesEquipo");
         if (!tbody) return;
 
-        if (!data || data.length === 0) {
+        const equipoSeleccionado =
+            document.getElementById("filtroEquipoVendedor")?.value?.trim() || "";
+
+        const filtrados = (data || [])
+            .filter(x => {
+                const equipoFila = (x.equipo ?? x.Equipo ?? "").trim();
+
+                if (!equipoSeleccionado || equipoSeleccionado === "Todos") {
+                    return true;
+                }
+
+                return equipoFila === equipoSeleccionado;
+            })
+            .sort((a, b) => (b.venta || 0) - (a.venta || 0))
+            .slice(0, 5);
+
+        console.log("CLIENTES TOP FILTRADOS:", filtrados);
+
+        if (filtrados.length === 0) {
             tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="text-center text-muted py-3">
-                        No hay clientes para el equipo seleccionado.
-                    </td>
-                </tr>
-            `;
+            <tr>
+                <td colspan="5" class="text-center text-muted py-3">
+                    No hay clientes para el equipo seleccionado.
+                </td>
+            </tr>
+        `;
             return;
         }
 
-        tbody.innerHTML = data.map(x => `
-            <tr>
-                <td>${x.cardCode ?? ""}</td>
-                <td>${x.cardName ?? ""}</td>
-                <td>${x.empleadoVentas ?? ""}</td>
-                <td class="text-end">${formatCurrency(x.venta ?? 0)}</td>
-                <td class="text-end">${formatNumber(x.aportePct ?? 0)}%</td>
-            </tr>
-        `).join("");
+        tbody.innerHTML = filtrados.map(x => `
+        <tr>
+            <td>${x.cardCode ?? ""}</td>
+            <td>${x.cardName ?? ""}</td>
+            <td>${x.empleadoVentas ?? ""}</td>
+            <td class="text-end">${formatCurrency(x.venta ?? 0)}</td>
+            <td class="text-end">${formatNumber(x.aportePct ?? 0)}%</td>
+        </tr>
+    `).join("");
     }
+
+
 
     function actualizarTopClientesEquipo() {
         const filtro = document.getElementById("filtroEquipoVendedor");
@@ -903,7 +1004,8 @@
     async function actualizarDashboard() {
         await Promise.allSettled([
             cargarReporte(),
-            cargarProyeccionCierre()
+            cargarProyeccionCierre(),
+            cargarEstadoCierreMes()
         ]);
     }
 
@@ -916,20 +1018,347 @@
 
 
     document.addEventListener("DOMContentLoaded", async () => {
+
         const btnExportar = document.getElementById("btnExportarExcel");
+        const btnCerrarMes = document.getElementById("btnCerrarMes");
+        const btnCerrarSesion = document.getElementById("btnCerrarSesion");
 
         if (btnExportar) {
             btnExportar.addEventListener("click", exportarExcelGerencial);
         }
 
+        if (btnCerrarMes) {
+            btnCerrarMes.addEventListener("click", cerrarOReprocesarMes);
+        }
+
+        if (btnCerrarSesion) {
+            btnCerrarSesion.addEventListener("click", () => {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = "/login.html";
+            });
+        }
+
+        mostrarSesionActual();
+
         await actualizarDashboard();
     });
 
+
+
+
     document.addEventListener("change", (e) => {
+
+        if (e.target && e.target.id === "filtroEquipoVendedor") {
+            console.log("Cambio equipo vendedor:", e.target.value);
+            renderDetalleVendedores(dataVendedores || []);
+            renderClientesTop(dataClientesTop || []);
+        }
+
+        if (e.target && e.target.id === "filtroEquipoProducto") {
+            console.log("Cambio equipo producto:", e.target.value);
+            renderDetalleProductos(dataProductos || []);
+        }
+
         if (e.target && e.target.id === "selectEquipoProyeccionCierre") {
             renderDetalleProyeccionCierre();
         }
     });
+
+
+    function getUserRole() {
+        return (
+            localStorage.getItem("role") ||
+            localStorage.getItem("rol") ||
+            localStorage.getItem("permiso") ||
+            ""
+        );
+    }
+
+    function esAdmin() {
+        const role = (getUserRole() || "").toUpperCase().trim();
+        console.log("ROL DETECTADO:", role);
+        return role === "ADMIN";
+    }
+
+
+
+
+    async function cargarEstadoCierreMes() {
+
+        console.log("Ejecutando cargarEstadoCierreMes");
+        console.log("ROL DETECTADO:", getUserRole());
+        console.log("Es admin:", esAdmin());
+
+        const anio = document.getElementById("anio").value;
+        const mes = document.getElementById("mes").value;
+        const categoriaVenta = document.getElementById("categoria").value;
+        const division = document.getElementById("division").value;
+
+        const panel = document.getElementById("panelCierreMes");
+        const badge = document.getElementById("badgeEstadoCierre");
+        const boton = document.getElementById("btnCerrarMes");
+
+        if (!panel || !badge || !boton) {
+            console.warn("No se encontró panel, badge o botón cierre mes");
+            return;
+        }
+
+        // =========================================================
+        // Mostrar panel de cierre SOLO a ADMIN
+        // =========================================================
+
+        if (!esAdmin()) {
+
+            // Ocultar panel completo
+            panel.setAttribute("hidden", "hidden");
+
+            panel.style.display = "none";
+            panel.style.visibility = "hidden";
+            panel.style.opacity = "0";
+
+            // Ocultar botón
+            boton.setAttribute("hidden", "hidden");
+
+            boton.style.display = "none";
+            boton.style.visibility = "hidden";
+            boton.style.opacity = "0";
+
+            console.log("PANEL Y BOTON OCULTOS");
+
+            return;
+        }
+
+        // =========================================================
+        // ADMIN
+        // =========================================================
+
+        panel.removeAttribute("hidden");
+
+        panel.style.display = "block";
+        panel.style.visibility = "visible";
+        panel.style.opacity = "1";
+
+        // Mostrar botón reproceso
+        boton.removeAttribute("hidden");
+
+        boton.style.display = "inline-block";
+        boton.style.visibility = "visible";
+        boton.style.opacity = "1";
+
+        console.log("PANEL Y BOTON MOSTRADOS");
+
+
+
+
+
+        // =========================================================
+        // Consultar estado cierre mensual
+        // =========================================================
+
+        const url =
+            `/api/gerencia/cierre-mensual?anio=${anio}` +
+            `&mes=${mes}` +
+            `&categoriaVenta=${encodeURIComponent(categoriaVenta)}` +
+            `&division=${encodeURIComponent(division)}`;
+
+        try {
+
+            const response = await fetch(url, {
+                headers: {
+                    "Authorization": "Bearer " + (localStorage.getItem("token") || "")
+                }
+            });
+
+            const result = await response.json();
+
+            console.log("RESPUESTA CIERRE:", result);
+
+            // =====================================================
+            // Sin cierre histórico
+            // =====================================================
+
+            if (!result.ok || !result.data || result.data.length === 0) {
+
+                badge.className = "badge bg-secondary";
+                badge.textContent = "Mes sin cierre histórico";
+
+                return;
+            }
+
+            // =====================================================
+            // Estado cierre
+            // =====================================================
+
+            const estado = result.data[0].estado || "CERRADO";
+
+            if (estado === "REPROCESADO") {
+
+                badge.className = "badge bg-warning text-dark";
+                badge.textContent = "MES REPROCESADO";
+
+            } else {
+
+                badge.className = "badge bg-success";
+                badge.textContent = "MES CERRADO";
+            }
+
+        } catch (error) {
+
+            console.error("Error cierre mensual:", error);
+
+            badge.className = "badge bg-danger";
+            badge.textContent = "Error cierre";
+        }
+    }
+          
+
+    function getSesionActual() {
+        const usuario =
+            localStorage.getItem("currentLogin") ||
+            localStorage.getItem("login") ||
+            localStorage.getItem("nombre") ||
+            localStorage.getItem("usuario") ||
+            "Sin usuario";
+
+        let role =
+            localStorage.getItem("role") ||
+            localStorage.getItem("rol") ||
+            localStorage.getItem("permiso") ||
+            localStorage.getItem("currentRole") ||
+            "";
+
+        // Fallback para cuenta admin
+        if (!role && usuario.toLowerCase().includes("admin")) {
+            role = "ADMIN";
+        }
+
+        if (!role && usuario.toLowerCase().includes("administrador")) {
+            role = "ADMIN";
+        }
+
+        return {
+            usuario,
+            role
+        };
+    }
+
+    function getUserRole() {
+        return (getSesionActual().role || "").toUpperCase().trim();
+    }
+
+    function esAdmin() {
+        const role = getUserRole();
+        console.log("ROL DETECTADO:", role);
+        return role === "ADMIN";
+    }
+
+    function getUserRole() {
+        return (getSesionActual().role || "").toUpperCase().trim();
+    }
+
+    function esAdmin() {
+        const role = getUserRole();
+        console.log("ROL DETECTADO:", role);
+        return role === "ADMIN";
+    }
+
+    function mostrarSesionActual() {
+        const info = document.getElementById("infoSesion");
+        if (!info) return;
+
+        const sesion = getSesionActual();
+
+        info.textContent = `Usuario: ${sesion.usuario} | Rol: ${sesion.role || "Sin rol"}`;
+    }
+
+
+
+
+    document.getElementById("btnCerrarMes").addEventListener("click", async () => {
+        const anio = document.getElementById("anio").value;
+        const mes = document.getElementById("mes").value;
+        const categoriaVenta = document.getElementById("categoria").value;
+        const division = document.getElementById("division").value;
+
+        const observacion = prompt("Ingrese observación del cierre/reproceso:", "Cierre mensual validado contra SAP");
+
+        if (observacion === null) return;
+
+        const confirmar = confirm(
+            `¿Confirmas cerrar/reprocesar el mes ${mes}/${anio}?\n\n` +
+            `Esta acción actualizará el cierre histórico y quedará auditada.`
+        );
+
+        if (!confirmar) return;
+
+        const url = `/api/gerencia/cerrar-mes?anio=${anio}&mes=${mes}&categoriaVenta=${encodeURIComponent(categoriaVenta)}&division=${encodeURIComponent(division)}&forzarReproceso=true&observacion=${encodeURIComponent(observacion)}`;
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + localStorage.getItem("token")
+            }
+        });
+
+        const result = await response.json();
+
+        if (!result.ok) {
+            alert(result.mensaje || "Error al cerrar/reprocesar mes.");
+            return;
+        }
+
+        alert(result.mensaje);
+        await cargarEstadoCierreMes();
+        await cargarReporte();
+    });
+
+
+
+
+    async function cerrarOReprocesarMes() {
+        const anio = document.getElementById("anio").value;
+        const mes = document.getElementById("mes").value;
+        const categoriaVenta = document.getElementById("categoria").value;
+        const division = document.getElementById("division").value;
+
+        const observacion = prompt(
+            "Ingrese observación del cierre/reproceso:",
+            "Cierre mensual validado contra SAP"
+        );
+
+        if (observacion === null) return;
+
+        const confirmar = confirm(
+            `¿Confirmas cerrar/reprocesar el mes ${mes}/${anio}?\n\n` +
+            `Esta acción actualizará el cierre histórico y quedará auditada.`
+        );
+
+        if (!confirmar) return;
+
+        const url = `/api/gerencia/cerrar-mes?anio=${anio}&mes=${mes}&categoriaVenta=${encodeURIComponent(categoriaVenta)}&division=${encodeURIComponent(division)}&forzarReproceso=true&observacion=${encodeURIComponent(observacion)}`;
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + localStorage.getItem("token")
+            }
+        });
+
+        const result = await response.json();
+
+        if (!result.ok) {
+            alert(result.mensaje || "Error al cerrar/reprocesar mes.");
+            return;
+        }
+
+        alert(result.mensaje);
+        await cargarEstadoCierreMes();
+        await actualizarDashboard();
+    }
+
+
+
 
 })();
 

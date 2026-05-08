@@ -16,6 +16,10 @@
             <div>Vista dinámica de ventas, metas y cumplimiento por equipo</div>
         </div>
 
+        <div id="infoSesion" class="text-end small text-muted mb-2">
+            Sesión: no identificada
+        </div>
+
         <div class="filter-card">
             <div class="row g-3 align-items-end">
                 <div class="col-md-2">
@@ -69,6 +73,20 @@
                 <div class="col-md-2 d-grid">
                     <button id="btnActualizar" class="btn btn-primary">Actualizar</button>
                     <button id="btnExportarExcel" class="btn btn-success"> Exportar a Excel </button>
+                    <button id="btnCerrarSesion" class="btn btn-secondary"> Cerrar Sesión </button>
+
+                    <div id="panelCierreMes" style="margin-top:10px;">
+
+                        <span id="badgeEstadoCierre" class="badge bg-secondary">
+                            Sin cierre
+                        </span>
+
+                        <button id="btnCerrarMes" class="btn btn-danger btn-sm ms-2" style="display:none;">
+                            Cerrar / Reprocesar Mes
+                        </button>
+
+                    </div>
+
 
                 </div>
             </div>
