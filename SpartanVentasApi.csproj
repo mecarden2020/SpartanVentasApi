@@ -20,6 +20,9 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\img\marquee\" />
+    <Folder Include="wwwroot\rindespartan\img\" />
+    <Folder Include="wwwroot\rindespartan\partials\" />
+    <Folder Include="wwwroot\uploads\rindespartan\" />
     <Folder Include="wwwroot\uploads\users\" />
   </ItemGroup>
 
