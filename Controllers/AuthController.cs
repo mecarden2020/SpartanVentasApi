@@ -73,6 +73,12 @@ namespace SpartanVentasApi.Controllers
                 return "SUPERVISOR";
             }
 
+            // Recepción.
+            if (r is "RECEPCION" or "RECEPCIONISTA")
+            {
+                return "RECEPCIONISTA";
+            }
+
             // Rol por defecto.
             return "VENDEDOR";
         }

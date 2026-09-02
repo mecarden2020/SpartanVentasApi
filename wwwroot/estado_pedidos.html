@@ -221,6 +221,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Documento</th>
+                                <th>Nº SAP</th>
                                 <th>Vendedor</th>
                                 <th>Fecha Contabilización</th>
                                 <th>Nº DTE</th>
@@ -388,7 +389,8 @@
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
                             <td>${c(r, "DOCUMENTO")}</td>
-                            <td>${c(r, "VENDEDOR")}</td>
+                            <td>${c(r, "Nº SAP")}</td>
+                            <td>${c(r, "VENDEDOR")}</td>                            
                             <td>${c(r, "Fecha Contabilizacion")}</td>
                             <td>${c(r, "Nº DTE") || c(r, "NroDTE") || c(r, "NroFolio")}</td>
                             <td>${c(r, "Nombre Cliente")}</td>

@@ -262,6 +262,8 @@
         </div>
     </div>
 
+    <script src="/config/routes.js?v=1"></script>
+
     <script>
         function setEstado(texto, tipo = "muted") {
             const span = document.getElementById("estadoTexto");
@@ -305,13 +307,73 @@
 
                 setEstado("Autenticado correctamente, redirigiendo…", "success");
 
-                // ✅ Redirigir según rol
-                const role = (data.role ?? "VENDEDOR").toUpperCase();
-                if (role === "GERENCIA" || role === "ADMIN") {
-                    window.location.href = "gerencia_presupuesto_ventas.html";
-                } else {
-                    window.location.href = "ingreso.html";
+                // =========================================
+
+                // Redirigir según ReturnUrl o rol
+                const role = (data.role ?? "VENDEDOR")
+                    .trim()
+                    .toUpperCase();
+
+                const params = new URLSearchParams(window.location.search);
+
+                const returnUrl =
+                    params.get("returnUrl") ||
+                    params.get("ReturnUrl");
+
+                // Un módulo puede solicitar una URL de retorno.
+                if (returnUrl) {
+                    window.location.href = returnUrl;
+                    return;
                 }
+
+                // ConsultaSN en desarrollo local.
+                if (
+                    window.location.hostname === "localhost" &&
+                    (role === "RECEPCION" || role === "RECEPCIONISTA")
+                ) {
+                    window.location.href =
+                        "https://localhost:7150/SociosNegocios";
+
+                    return;
+                }
+
+                // Ruta centralizada.
+                const destinoRol = window.SpartanRoutes?.[role];
+
+                if (destinoRol) {
+                    window.location.href = destinoRol;
+                    return;
+                }
+
+                // Ruta segura por defecto.
+                window.location.href = "/ingreso.html";
+
+
+
+                // =========================================
+
+
+
+
+                /*
+                // Destino por rol
+                if (role === "GERENCIA" || role === "ADMIN") {
+                    window.location.href = "/uploads/gerencia/repor_ventas.html";
+                    return;
+                }
+
+                // Destino para Recepción en desarrollo host y en produccion SpartanCloud/clientes
+                if (role === "RECEPCION" || role === "RECEPCIONISTA") {
+                    const destinoRecepcion =
+                        window.location.hostname === "localhost"
+                            ? "https://localhost:7150/SociosNegocios"
+                            : "/SpartanCloud/clientes";
+
+                    window.location.href = destinoRecepcion;
+                    return;
+                }*/
+
+
 
                 // Redirigir al dashboard principal
                 window.location.href = "ingreso.html";
