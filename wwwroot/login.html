@@ -191,6 +191,28 @@
             .powered:hover {
                 color: rgba(255,255,255,.75);
             }
+
+        .perfil-btn {
+            border: 0;
+            border-radius: 6px;
+            padding: 14px 16px;
+            font-weight: 800;
+            font-size: 16px;
+            color: #fff;
+            background: linear-gradient(180deg, #006090, #00527A);
+        }
+
+            .perfil-btn:hover {
+                background: #004466;
+            }
+
+        .perfil-btn-gerencia, .perfil-btn-supervisor, .perfil-btn-admin {
+            background: linear-gradient(180deg, #7a5a00, #604600);
+        }
+
+            .perfil-btn-gerencia:hover, .perfil-btn-supervisor:hover, .perfil-btn-admin:hover {
+                background: #4f3a00;
+            }
     </style>
 </head>
 
@@ -208,19 +230,31 @@
             </div>
 
 
-            <div class="field mb-3">
-                <input id="txtUsuario" class="form-control"
-                       placeholder="Usuario" autocomplete="username" />
+            <div id="loginForm">
+                <div class="field mb-3">
+                    <input id="txtUsuario" class="form-control"
+                           placeholder="Usuario o correo" autocomplete="username" />
+                </div>
+
+                <div class="field mb-3">
+                    <input id="txtPassword" type="password" class="form-control"
+                           placeholder="Contraseña" autocomplete="current-password" />
+                </div>
+
+                <div class="d-grid">
+                    <button id="btnLogin" class="btn btn-login text-white fw-bold py-3" type="button" onclick="login()">Ingresar</button>
+                </div>
             </div>
 
-            <div class="field mb-3">
-                <input id="txtPassword" type="password" class="form-control"
-                       placeholder="Contraseña" autocomplete="current-password" />
-            </div>
-
-            <div class="d-grid">
-                <button id="btnLogin" class="btn btn-login text-white fw-bold py-3" onclick="login()">Ingresar</button>
-
+            <div id="perfilSelector" class="d-none">
+                <div class="text-center mb-3">
+                    <div class="fw-bold fs-5" style="color:#333;">Seleccione cómo desea ingresar</div>
+                    <div id="perfilUsuario" class="small text-muted mt-1"></div>
+                </div>
+                <div id="perfilBotones" class="d-grid gap-2"></div>
+                <div class="d-grid mt-3">
+                    <button type="button" class="btn btn-outline-secondary" onclick="volverLogin()">Volver</button>
+                </div>
             </div>
 
             <div class="estado mt-3">
@@ -265,6 +299,9 @@
     <script src="/config/routes.js?v=1"></script>
 
     <script>
+        let tokenSeleccionPerfil = null;
+        let seleccionPerfilActiva = false;
+
         function setEstado(texto, tipo = "muted") {
             const span = document.getElementById("estadoTexto");
             span.textContent = texto;
@@ -272,14 +309,151 @@
             span.classList.add("text-" + tipo);
         }
 
+        function limpiarSesionLocal() {
+            localStorage.removeItem("jwtToken");
+            localStorage.removeItem("currentSlpCode");
+            localStorage.removeItem("currentAlias");
+            localStorage.removeItem("currentLogin");
+            localStorage.removeItem("currentRole");
+            localStorage.removeItem("currentPermisos");
+        }
+
+        function guardarSesion(data) {
+            localStorage.setItem("jwtToken", data.token ?? "");
+            localStorage.setItem("currentSlpCode", data.slpCode ?? "");
+            localStorage.setItem("currentAlias", data.username ?? "");
+            localStorage.setItem("currentLogin", data.login ?? "");
+            localStorage.setItem("currentRole", (data.role ?? "VENDEDOR").toUpperCase());
+            localStorage.setItem("currentPermisos", JSON.stringify(data.permisos ?? []));
+        }
+
+        function textoPerfil(perfil) {
+            const rol = (perfil ?? "").trim().toUpperCase();
+            switch (rol) {
+                case "VENDEDOR": return "Acceso Vendedor";
+                case "SUPERVISOR": return "Acceso Supervisor";
+                case "GERENCIA": return "Acceso Gerencia";
+                case "ADMIN": return "Acceso Administrador";
+                case "ADMIN_VENDEDORES": return "Administración de Vendedores";
+                case "RECEPCION":
+                case "RECEPCIONISTA": return "Acceso Recepción";
+                default: return "Acceso " + rol;
+            }
+        }
+
+        function clasePerfil(perfil) {
+            const rol = (perfil ?? "").trim().toUpperCase();
+            if (rol === "GERENCIA") return "perfil-btn-gerencia";
+            if (rol === "SUPERVISOR") return "perfil-btn-supervisor";
+            if (rol === "ADMIN" || rol === "ADMIN_VENDEDORES") return "perfil-btn-admin";
+            return "";
+        }
+
+        function mostrarSelectorPerfiles(data) {
+            tokenSeleccionPerfil = data.tokenSeleccion;
+            seleccionPerfilActiva = true;
+            limpiarSesionLocal();
+
+            document.getElementById("loginForm").classList.add("d-none");
+            document.getElementById("perfilSelector").classList.remove("d-none");
+
+            const nombre = data.login || data.username || "";
+            const usuario = data.username || "";
+            document.getElementById("perfilUsuario").textContent =
+                nombre ? `${nombre}${usuario ? " (" + usuario + ")" : ""}` : usuario;
+
+            const contenedor = document.getElementById("perfilBotones");
+            contenedor.innerHTML = "";
+            const perfiles = Array.isArray(data.perfiles) ? data.perfiles : [];
+
+            perfiles.forEach(perfil => {
+                const rol = (perfil ?? "").trim().toUpperCase();
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "perfil-btn " + clasePerfil(rol);
+                btn.textContent = textoPerfil(rol);
+                btn.onclick = () => seleccionarPerfil(rol);
+                contenedor.appendChild(btn);
+            });
+
+            setEstado("Credenciales correctas. Seleccione un perfil.", "primary");
+            document.getElementById("estadoUsuario").textContent =
+                perfiles.length ? "Perfiles disponibles: " + perfiles.join(" · ") : "";
+        }
+
+        function volverLogin() {
+            tokenSeleccionPerfil = null;
+            seleccionPerfilActiva = false;
+            document.getElementById("perfilSelector").classList.add("d-none");
+            document.getElementById("loginForm").classList.remove("d-none");
+            document.getElementById("perfilBotones").innerHTML = "";
+            document.getElementById("estadoUsuario").textContent = "";
+            document.getElementById("txtPassword").value = "";
+            setEstado("No autenticado", "muted");
+            document.getElementById("txtUsuario").focus();
+        }
+
+        async function seleccionarPerfil(perfil) {
+            if (!tokenSeleccionPerfil) {
+                setEstado("La selección de perfil ya no es válida. Inicie sesión nuevamente.", "danger");
+                volverLogin();
+                return;
+            }
+
+            const botones = document.querySelectorAll("#perfilBotones button");
+            botones.forEach(b => b.disabled = true);
+            setEstado("Ingresando como " + textoPerfil(perfil).replace("Acceso ", "") + "…", "primary");
+
+            try {
+                const resp = await fetch("/api/Auth/seleccionar-perfil", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ tokenSeleccion: tokenSeleccionPerfil, perfil })
+                });
+
+                if (!resp.ok) {
+                    const msg = await resp.text();
+                    if (resp.status === 401) {
+                        tokenSeleccionPerfil = null;
+                        seleccionPerfilActiva = false;
+                    }
+                    setEstado("No fue posible seleccionar el perfil: " + msg, "danger");
+                    botones.forEach(b => b.disabled = false);
+                    return;
+                }
+
+                const data = await resp.json();
+                if (!data.token) {
+                    setEstado("El servidor no devolvió una sesión válida.", "danger");
+                    botones.forEach(b => b.disabled = false);
+                    return;
+                }
+
+                tokenSeleccionPerfil = null;
+                seleccionPerfilActiva = false;
+                guardarSesion(data);
+                setEstado("Autenticado como " + (data.role ?? perfil) + ". Redirigiendo…", "success");
+                redirigirSegunRol(data);
+            } catch (err) {
+                console.error(err);
+                setEstado("Error de conexión: " + err, "danger");
+                botones.forEach(b => b.disabled = false);
+            }
+        }
+
         async function login() {
             const username = document.getElementById("txtUsuario").value.trim();
             const password = document.getElementById("txtPassword").value;
 
             if (!username || !password) {
-                setEstado("Debe ingresar usuario y contraseña", "danger");
+                setEstado("Debe ingresar usuario o correo y contraseña", "danger");
                 return;
             }
+
+            const btnLogin = document.getElementById("btnLogin");
+            btnLogin.disabled = true;
+            setEstado("Validando credenciales…", "primary");
+            document.getElementById("estadoUsuario").textContent = "";
 
             try {
                 const resp = await fetch("/api/Auth/login", {
@@ -290,6 +464,7 @@
 
                 if (!resp.ok) {
                     const msg = await resp.text();
+                    limpiarSesionLocal();
                     setEstado("Login inválido: " + msg, "danger");
                     document.getElementById("estadoUsuario").textContent = "";
                     return;
@@ -297,97 +472,76 @@
 
                 const data = await resp.json();
 
-                // Guardar datos en localStorage para usarlos en todos los dashboards
-                localStorage.setItem("jwtToken", data.token);
-                localStorage.setItem("currentSlpCode", data.slpCode ?? "");
-                localStorage.setItem("currentAlias", data.username ?? "");
-                localStorage.setItem("currentLogin", data.login ?? "");
-                localStorage.setItem("currentRole", (data.role ?? "VENDEDOR").toUpperCase());
-                localStorage.setItem("currentPermisos", JSON.stringify(data.permisos ?? []));
+                if (data.requiereSeleccionPerfil === true) {
+                    mostrarSelectorPerfiles(data);
+                    return;
+                }
 
+                if (!data.token) {
+                    limpiarSesionLocal();
+                    setEstado("El servidor no devolvió una sesión válida.", "danger");
+                    return;
+                }
+
+                guardarSesion(data);
                 setEstado("Autenticado correctamente, redirigiendo…", "success");
-
-                // =========================================
-
-                // Redirigir según ReturnUrl o rol
-                const role = (data.role ?? "VENDEDOR")
-                    .trim()
-                    .toUpperCase();
-
-                const params = new URLSearchParams(window.location.search);
-
-                const returnUrl =
-                    params.get("returnUrl") ||
-                    params.get("ReturnUrl");
-
-                // Un módulo puede solicitar una URL de retorno.
-                if (returnUrl) {
-                    window.location.href = returnUrl;
-                    return;
-                }
-
-                // ConsultaSN en desarrollo local.
-                if (
-                    window.location.hostname === "localhost" &&
-                    (role === "RECEPCION" || role === "RECEPCIONISTA")
-                ) {
-                    window.location.href =
-                        "https://localhost:7150/SociosNegocios";
-
-                    return;
-                }
-
-                // Ruta centralizada.
-                const destinoRol = window.SpartanRoutes?.[role];
-
-                if (destinoRol) {
-                    window.location.href = destinoRol;
-                    return;
-                }
-
-                // Ruta segura por defecto.
-                window.location.href = "/ingreso.html";
-
-
-
-                // =========================================
-
-
-
-
-                /*
-                // Destino por rol
-                if (role === "GERENCIA" || role === "ADMIN") {
-                    window.location.href = "/uploads/gerencia/repor_ventas.html";
-                    return;
-                }
-
-                // Destino para Recepción en desarrollo host y en produccion SpartanCloud/clientes
-                if (role === "RECEPCION" || role === "RECEPCIONISTA") {
-                    const destinoRecepcion =
-                        window.location.hostname === "localhost"
-                            ? "https://localhost:7150/SociosNegocios"
-                            : "/SpartanCloud/clientes";
-
-                    window.location.href = destinoRecepcion;
-                    return;
-                }*/
-
-
-
-                // Redirigir al dashboard principal
-                window.location.href = "ingreso.html";
-
+                redirigirSegunRol(data);
             } catch (err) {
                 console.error(err);
+                limpiarSesionLocal();
                 setEstado("Error de conexión: " + err, "danger");
                 document.getElementById("estadoUsuario").textContent = "";
+            } finally {
+                btnLogin.disabled = false;
             }
         }
 
-        // ENTER para enviar
+
+
+        function redirigirSegunRol(data) {
+            const role = (data.role ?? "VENDEDOR").trim().toUpperCase();
+
+            const params = new URLSearchParams(window.location.search);
+            const returnUrl = params.get("returnUrl") || params.get("ReturnUrl");
+
+            if (returnUrl) {
+                window.location.href = returnUrl;
+                return;
+            }
+
+            // DESARROLLO LOCAL:
+            // ConsultaSN se ejecuta como aplicación separada.
+            if (
+                window.location.hostname === "localhost" &&
+                (role === "RECEPCION" || role === "RECEPCIONISTA")
+            ) {
+                window.location.href = "https://localhost:7150/SociosNegocios";
+                return;
+            }
+
+            // PRODUCCIÓN:
+            // Usa las rutas centrales definidas en routes.js
+            const destinoRol = window.SpartanRoutes?.[role];
+
+            if (destinoRol) {
+                window.location.href = destinoRol;
+                return;
+            }
+
+            // Ruta de respaldo
+            window.location.href = "/ingreso.html";
+        }
+
+
+
+
+
+
+
+
+
         document.addEventListener("keydown", e => {
-            if (e.key === "Enter") login();
+            if (e.key === "Enter" && !seleccionPerfilActiva) login();
         });
     </script>
 

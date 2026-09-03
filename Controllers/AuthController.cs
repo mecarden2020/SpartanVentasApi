@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -11,6 +6,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using SpartanVentasApi.Helpers;
 using SpartanVentasApi.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Data;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace SpartanVentasApi.Controllers
 {
@@ -83,9 +85,20 @@ namespace SpartanVentasApi.Controllers
             return "VENDEDOR";
         }
 
+
+
+
         // ============================================================
         // LOGIN
         // POST /api/auth/login
+        //
+        // Permite autenticación mediante:
+        //   1) Usuario de dbo.ApiUsuarios
+        //   2) Correo SAP OSLP.U_CORREO
+        //
+        // El correo se resuelve mediante SlpCode.
+        // Si un correo corresponde a más de un usuario activo,
+        // NO se selecciona uno arbitrariamente.
         // ============================================================
 
         [HttpPost("login")]
@@ -94,99 +107,171 @@ namespace SpartanVentasApi.Controllers
         {
             try
             {
-                var username =
+                var identificador =
                     (request?.Username ?? string.Empty).Trim();
 
                 var passPlano =
                     (request?.Password ?? string.Empty).Trim();
 
-                if (string.IsNullOrWhiteSpace(username))
+                if (string.IsNullOrWhiteSpace(identificador))
                 {
-                    return Unauthorized("Usuario inválido");
+                    return Unauthorized(
+                        "Debe ingresar usuario o correo");
                 }
 
                 if (string.IsNullOrWhiteSpace(passPlano))
                 {
-                    return Unauthorized("Contraseña requerida");
+                    return Unauthorized(
+                        "Contraseña requerida");
                 }
 
                 using var conn = new SqlConnection(ConnStr);
                 conn.Open();
 
-                using var cmd = new SqlCommand(@"
+
+                // ============================================================
+                // PASO 1
+                // Intentar localizar directamente por Usuario
+                // ============================================================
+
+                int? usuarioIdEncontrado = null;
+
+                using (var cmdUsuario = new SqlCommand(@"
 SELECT TOP 1
-    u.Id,
-    u.Usuario,
-    u.Clave,
-    u.Nombre,
-    u.SlpCode,
-    ISNULL(rr.RolNombre,'VENDEDOR') AS Rol
+    u.Id
 FROM dbo.ApiUsuarios u
-OUTER APPLY
-(
-    SELECT TOP 1
-        r.Nombre AS RolNombre
-    FROM dbo.ApiUsuarioRoles ur
-    INNER JOIN dbo.ApiRoles r
-        ON r.Id = ur.RolId
-    WHERE ur.UsuarioId = u.Id
-    ORDER BY
-        CASE
-            WHEN UPPER(LTRIM(RTRIM(r.Nombre)))
-                 IN ('GERENCIA','GERENTE')
-                THEN 1
-
-            WHEN UPPER(LTRIM(RTRIM(r.Nombre)))
-                 IN ('SUPERVISOR','JEFE')
-                THEN 2
-
-            WHEN UPPER(LTRIM(RTRIM(r.Nombre)))
-                 IN
-                 (
-                    'ADMIN_VENDEDORES',
-                    'MANTENCION',
-                    'MANTENCIÓN'
-                 )
-                THEN 3
-
-            WHEN UPPER(LTRIM(RTRIM(r.Nombre)))
-                 IN
-                 (
-                    'ADMIN',
-                    'ADMINISTRADOR',
-                    'ADMINISTRADOR DEL SISTEMA'
-                 )
-                THEN 4
-
-            ELSE 99
-        END,
-        ur.Id DESC
-) rr
-WHERE u.Usuario = @Usuario
+WHERE LTRIM(RTRIM(u.Usuario)) = @Identificador
   AND u.Activo = 1;
-", conn);
+", conn))
+                {
+                    cmdUsuario.Parameters.Add(
+                        "@Identificador",
+                        SqlDbType.NVarChar,
+                        255).Value = identificador;
 
-                cmd.Parameters.AddWithValue(
-                    "@Usuario",
-                    username);
+                    var resultado =
+                        cmdUsuario.ExecuteScalar();
+
+                    if (resultado != null &&
+                        resultado != DBNull.Value)
+                    {
+                        usuarioIdEncontrado =
+                            Convert.ToInt32(resultado);
+                    }
+                }
+
+
+                // ============================================================
+                // PASO 2
+                // Si no fue encontrado como Usuario,
+                // intentar resolver mediante OSLP.U_CORREO
+                // ============================================================
+
+                if (!usuarioIdEncontrado.HasValue)
+                {
+                    var usuariosPorCorreo =
+                        new List<int>();
+
+                    using (var cmdCorreo = new SqlCommand(@"
+SELECT DISTINCT
+    u.Id
+FROM dbo.ApiUsuarios u
+INNER JOIN OSLP s
+    ON s.SlpCode = u.SlpCode
+WHERE u.Activo = 1
+  AND s.U_CORREO IS NOT NULL
+  AND LTRIM(RTRIM(s.U_CORREO)) <> ''
+  AND LOWER(LTRIM(RTRIM(s.U_CORREO)))
+      = LOWER(LTRIM(RTRIM(@Identificador)));
+", conn))
+                    {
+                        cmdCorreo.Parameters.Add(
+                            "@Identificador",
+                            SqlDbType.NVarChar,
+                            255).Value = identificador;
+
+                        using var readerCorreo =
+                            cmdCorreo.ExecuteReader();
+
+                        while (readerCorreo.Read())
+                        {
+                            usuariosPorCorreo.Add(
+                                Convert.ToInt32(
+                                    readerCorreo["Id"]));
+                        }
+                    }
+
+
+                    // --------------------------------------------------------
+                    // No existe usuario ni correo relacionado
+                    // --------------------------------------------------------
+
+                    if (usuariosPorCorreo.Count == 0)
+                    {
+                        return Unauthorized(
+                            "Usuario o correo no registrado, o usuario inactivo");
+                    }
+
+
+                    // --------------------------------------------------------
+                    // Correo ambiguo:
+                    // más de un usuario activo asociado al mismo correo
+                    // --------------------------------------------------------
+
+                    if (usuariosPorCorreo.Count > 1)
+                    {
+                        return Unauthorized(
+                            "El correo está asociado a más de un usuario. " +
+                            "Ingrese utilizando su usuario habitual.");
+                    }
+
+
+                    // --------------------------------------------------------
+                    // Correo válido y único
+                    // --------------------------------------------------------
+
+                    usuarioIdEncontrado =
+                        usuariosPorCorreo[0];
+                }
+
+
+                // ============================================================
+                // PASO 3
+                // CARGAR DATOS BASE DEL USUARIO
+                // ============================================================
 
                 int userId;
                 string usuarioBD;
                 string claveBD;
                 string nombreBD;
                 int? slpCodeBD;
-                string rolBD;
 
-                using (var reader = cmd.ExecuteReader())
+                using (var cmd = new SqlCommand(@"
+SELECT TOP 1
+    u.Id,
+    u.Usuario,
+    u.Clave,
+    u.Nombre,
+    u.SlpCode
+FROM dbo.ApiUsuarios u
+WHERE u.Id = @UsuarioId
+  AND u.Activo = 1;
+", conn))
                 {
+                    cmd.Parameters.Add(
+                        "@UsuarioId",
+                        SqlDbType.Int).Value =
+                            usuarioIdEncontrado.Value;
+
+                    using var reader = cmd.ExecuteReader();
+
                     if (!reader.Read())
                     {
                         return Unauthorized(
                             "Usuario no registrado o inactivo");
                     }
 
-                    userId =
-                        Convert.ToInt32(reader["Id"]);
+                    userId = Convert.ToInt32(reader["Id"]);
 
                     usuarioBD =
                         (reader["Usuario"]?.ToString()
@@ -200,20 +285,17 @@ WHERE u.Usuario = @Usuario
                         (reader["Nombre"]?.ToString()
                          ?? string.Empty).Trim();
 
-                    rolBD = NormalizaRol(
-                        reader["Rol"]?.ToString()
-                        ?? "VENDEDOR");
-
                     slpCodeBD =
                         reader["SlpCode"] == DBNull.Value
                             ? null
-                            : Convert.ToInt32(
-                                reader["SlpCode"]);
+                            : Convert.ToInt32(reader["SlpCode"]);
                 }
 
-                // ====================================================
-                // VALIDACIÓN DE CONTRASEÑA SHA256 HEX
-                // ====================================================
+
+                // ============================================================
+                // PASO 4
+                // VALIDACIÓN DE CONTRASEÑA
+                // ============================================================
 
                 var hashIngresado =
                     PasswordHelper.Sha256Hex(passPlano);
@@ -227,32 +309,359 @@ WHERE u.Usuario = @Usuario
                         "Contraseña incorrecta");
                 }
 
+
+                // ============================================================
+                // PASO 5
+                // OBTENER TODOS LOS ROLES AUTORIZADOS
+                // ============================================================
+
+                var roles =
+                    ObtenerRolesDeUsuario(conn, userId);
+
+
+                // ============================================================
+                // PASO 6
+                // SI TIENE MÁS DE UN PERFIL, NO CREAR SESIÓN TODAVÍA
+                // ============================================================
+
+                if (roles.Count > 1)
+                {
+                    var tokenSeleccion =
+                        GenerarTokenSeleccionPerfil(
+                            userId,
+                            usuarioBD);
+
+                    return Ok(new
+                    {
+                        requiereSeleccionPerfil = true,
+
+                        tokenSeleccion,
+
+                        username = usuarioBD,
+                        login = nombreBD,
+                        slpCode = slpCodeBD,
+
+                        perfiles = roles
+                    });
+                }
+
+
+                // ============================================================
+                // PASO 7
+                // UN SOLO ROL -> LOGIN NORMAL
+                // ============================================================
+
+                var rolBD =
+                    roles.Count == 1
+                        ? roles[0]
+                        : "VENDEDOR";
+
                 var user = new UserInfo
                 {
                     Username = usuarioBD,
                     Login = nombreBD,
                     SlpCode = slpCodeBD,
-
-                    Role = string.IsNullOrWhiteSpace(rolBD)
-                        ? "VENDEDOR"
-                        : rolBD,
+                    Role = rolBD,
 
                     Permisos =
-                        ObtenerPermisosDeUsuarioSafe(
+                        ObtenerPermisosPorRol(
                             conn,
-                            userId)
+                            userId,
+                            rolBD)
                 };
 
-                // JWT existente.
+
+                // ============================================================
+                // PASO 8
+                // JWT DEFINITIVO
+                // ============================================================
+
                 var token = GenerateJwtToken(user);
 
-                // Nueva cookie compartida para SpartanCloud.
+
+                // ============================================================
+                // PASO 9
+                // COOKIE SSO
+                // ============================================================
+
                 await CrearCookieSsoAsync(user);
 
-                // Se mantiene exactamente la estructura JSON
-                // utilizada por login.html.
+
+                // ============================================================
+                // PASO 10
+                // RESPUESTA LOGIN NORMAL
+                // ============================================================
+
                 return Ok(new
                 {
+                    requiereSeleccionPerfil = false,
+
+                    token,
+                    slpCode = user.SlpCode,
+                    username = user.Username,
+                    login = user.Login,
+                    role = user.Role,
+                    permisos = user.Permisos
+                });
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    "Error interno en login: " + ex.Message);
+            }
+        }
+
+
+        // ============================================================
+        // DTO - SELECCIÓN DE PERFIL
+        // ============================================================
+
+        public class SeleccionarPerfilRequest
+        {
+            public string TokenSeleccion { get; set; } =
+                string.Empty;
+
+            public string Perfil { get; set; } =
+                string.Empty;
+        }
+
+
+
+
+        // ============================================================
+        // SELECCIONAR PERFIL
+        // POST /api/auth/seleccionar-perfil
+        // ============================================================
+
+        [HttpPost("seleccionar-perfil")]
+        public async Task<IActionResult> SeleccionarPerfil(
+            [FromBody] SeleccionarPerfilRequest request)
+        {
+            try
+            {
+                if (request == null ||
+                    string.IsNullOrWhiteSpace(request.TokenSeleccion) ||
+                    string.IsNullOrWhiteSpace(request.Perfil))
+                {
+                    return BadRequest(
+                        "Token y perfil son requeridos");
+                }
+
+                var tokenSeleccion =
+                    request.TokenSeleccion.Trim();
+
+                var perfilSolicitado =
+                    NormalizaRol(request.Perfil);
+
+                // ====================================================
+                // VALIDAR TOKEN TEMPORAL
+                // ====================================================
+
+                var jwtConfig =
+                    _config.GetSection("Jwt");
+
+                var keyStr =
+                    jwtConfig["Key"];
+
+                if (string.IsNullOrWhiteSpace(keyStr))
+                {
+                    throw new InvalidOperationException(
+                        "Falta Jwt:Key en appsettings.json");
+                }
+
+                var tokenHandler =
+                    new JwtSecurityTokenHandler();
+
+                var validationParameters =
+                    new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = jwtConfig["Issuer"],
+
+                        ValidateAudience = true,
+                        ValidAudience = jwtConfig["Audience"],
+
+                        ValidateIssuerSigningKey = true,
+
+                        IssuerSigningKey =
+                            new SymmetricSecurityKey(
+                                Encoding.UTF8.GetBytes(keyStr)),
+
+                        ValidateLifetime = true,
+
+                        ClockSkew = TimeSpan.Zero
+                    };
+
+                ClaimsPrincipal principal;
+
+                try
+                {
+                    principal =
+                        tokenHandler.ValidateToken(
+                            tokenSeleccion,
+                            validationParameters,
+                            out _);
+                }
+                catch
+                {
+                    return Unauthorized(
+                        "La selección de perfil expiró. Inicie sesión nuevamente.");
+                }
+
+
+                // ====================================================
+                // CONFIRMAR QUE ES TOKEN DE SELECCIÓN
+                // ====================================================
+
+                var tokenType =
+                    principal.FindFirst("tokenType")?.Value;
+
+                if (!string.Equals(
+                        tokenType,
+                        "PROFILE_SELECTION",
+                        StringComparison.Ordinal))
+                {
+                    return Unauthorized(
+                        "Token de selección inválido");
+                }
+
+
+                // ====================================================
+                // OBTENER USER ID DEL TOKEN
+                // ====================================================
+
+                var userIdTexto =
+                    principal.FindFirst("userId")?.Value;
+
+                if (!int.TryParse(
+                        userIdTexto,
+                        out var userId))
+                {
+                    return Unauthorized(
+                        "Token de selección inválido");
+                }
+
+
+                // ====================================================
+                // CONSULTAR USUARIO
+                // ====================================================
+
+                using var conn =
+                    new SqlConnection(ConnStr);
+
+                conn.Open();
+
+                string usuarioBD;
+                string nombreBD;
+                int? slpCodeBD;
+
+                using (var cmd = new SqlCommand(@"
+SELECT
+    Id,
+    Usuario,
+    Nombre,
+    SlpCode
+FROM dbo.ApiUsuarios
+WHERE Id = @UserId
+  AND Activo = 1;
+", conn))
+                {
+                    cmd.Parameters.Add(
+                        "@UserId",
+                        SqlDbType.Int).Value = userId;
+
+                    using var reader =
+                        cmd.ExecuteReader();
+
+                    if (!reader.Read())
+                    {
+                        return Unauthorized(
+                            "Usuario no habilitado");
+                    }
+
+                    usuarioBD =
+                        (reader["Usuario"]?.ToString()
+                         ?? string.Empty).Trim();
+
+                    nombreBD =
+                        (reader["Nombre"]?.ToString()
+                         ?? string.Empty).Trim();
+
+                    slpCodeBD =
+                        reader["SlpCode"] == DBNull.Value
+                            ? null
+                            : Convert.ToInt32(
+                                reader["SlpCode"]);
+                }
+
+
+                // ====================================================
+                // VERIFICAR QUE EL USUARIO REALMENTE POSEA ESE PERFIL
+                // ====================================================
+
+                var rolesAutorizados =
+                    ObtenerRolesDeUsuario(
+                        conn,
+                        userId);
+
+                var perfilValido =
+                    rolesAutorizados.Any(
+                        r => string.Equals(
+                            r,
+                            perfilSolicitado,
+                            StringComparison.OrdinalIgnoreCase));
+
+                if (!perfilValido)
+                {
+                    return Forbid();
+                }
+
+
+                // ====================================================
+                // CREAR IDENTIDAD CON EL PERFIL SELECCIONADO
+                // ====================================================
+
+                var user =
+                    new UserInfo
+                    {
+                        Username = usuarioBD,
+                        Login = nombreBD,
+                        SlpCode = slpCodeBD,
+                        Role = perfilSolicitado,
+
+                        Permisos =
+                            ObtenerPermisosPorRol(
+                                conn,
+                                userId,
+                                perfilSolicitado)
+                    };
+
+
+                // ====================================================
+                // JWT DEFINITIVO
+                // ====================================================
+
+                var token =
+                    GenerateJwtToken(user);
+
+
+                // ====================================================
+                // COOKIE SSO DEFINITIVA
+                // ====================================================
+
+                await CrearCookieSsoAsync(user);
+
+
+                // ====================================================
+                // RESPUESTA
+                // ====================================================
+
+                return Ok(new
+                {
+                    requiereSeleccionPerfil = false,
+
                     token,
                     slpCode = user.SlpCode,
                     username = user.Username,
@@ -265,9 +674,33 @@ WHERE u.Usuario = @Usuario
             {
                 return StatusCode(
                     StatusCodes.Status500InternalServerError,
-                    "Error interno en login: " + ex.Message);
+                    "Error al seleccionar perfil: "
+                    + ex.Message);
             }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         // ============================================================
         // MAGIC LINK
@@ -276,7 +709,7 @@ WHERE u.Usuario = @Usuario
 
         [HttpGet("magic-link")]
         public async Task<IActionResult> MagicLink(
-            [FromQuery] string token)
+    [FromQuery] string token)
         {
             try
             {
@@ -724,5 +1157,214 @@ WHERE ur.UsuarioId = @UserId;
             return new JwtSecurityTokenHandler()
                 .WriteToken(token);
         }
+
+
+
+
+        // ============================================================
+        // OBTENER ROLES DISPONIBLES DEL USUARIO
+        // ============================================================
+
+        private List<string> ObtenerRolesDeUsuario(
+            SqlConnection conn,
+            int userId)
+        {
+            var roles = new List<string>();
+
+            using var cmd = new SqlCommand(@"
+                                    SELECT DISTINCT
+                                        r.Nombre
+                                    FROM dbo.ApiUsuarioRoles ur
+                                    INNER JOIN dbo.ApiRoles r
+                                        ON r.Id = ur.RolId
+                                    WHERE ur.UsuarioId = @UserId
+                                    ORDER BY r.Nombre;
+                                    ", conn);
+
+            cmd.Parameters.Add(
+                "@UserId",
+                SqlDbType.Int).Value = userId;
+
+            using var reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                var rol = NormalizaRol(
+                    reader["Nombre"]?.ToString());
+
+                if (!string.IsNullOrWhiteSpace(rol)
+                    && !roles.Contains(
+                        rol,
+                        StringComparer.OrdinalIgnoreCase))
+                {
+                    roles.Add(rol);
+                }
+            }
+
+            // Compatibilidad con usuarios antiguos sin rol explícito.
+            if (roles.Count == 0)
+            {
+                roles.Add("VENDEDOR");
+            }
+
+            return roles;
+        }
+
+
+
+
+        // ============================================================
+        // OBTENER PERMISOS DEL PERFIL ACTIVO
+        // ============================================================
+
+        private List<string> ObtenerPermisosPorRol(
+            SqlConnection conn,
+            int userId,
+            string rolActivo)
+        {
+            var permisos = new List<string>();
+
+            try
+            {
+                using var cmd = new SqlCommand(@"
+                            SELECT DISTINCT
+                                p.Codigo
+                            FROM dbo.ApiUsuarioRoles ur
+                            INNER JOIN dbo.ApiRoles r
+                                ON r.Id = ur.RolId
+                            INNER JOIN dbo.ApiRolPermisos rp
+                                ON rp.RolId = r.Id
+                            INNER JOIN dbo.ApiPermisos p
+                                ON p.Id = rp.PermisoId
+                            WHERE ur.UsuarioId = @UserId
+                              AND UPPER(LTRIM(RTRIM(r.Nombre))) = @Rol;
+                            ", conn);
+
+                cmd.Parameters.Add(
+                    "@UserId",
+                    SqlDbType.Int).Value = userId;
+
+                cmd.Parameters.Add(
+                    "@Rol",
+                    SqlDbType.NVarChar,
+                    50).Value = rolActivo
+                        .Trim()
+                        .ToUpperInvariant();
+
+                using var reader = cmd.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var codigo =
+                        reader["Codigo"]?.ToString();
+
+                    if (!string.IsNullOrWhiteSpace(codigo))
+                    {
+                        permisos.Add(codigo.Trim());
+                    }
+                }
+            }
+            catch (SqlException)
+            {
+                return new List<string>();
+            }
+
+            return permisos
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+
+
+
+
+
+
+        // ============================================================
+        // TOKEN TEMPORAL PARA SELECCIÓN DE PERFIL
+        // Duración: 5 minutos
+        // ============================================================
+
+        private string GenerarTokenSeleccionPerfil(
+            int userId,
+            string username)
+        {
+            var jwt =
+                _config.GetSection("Jwt");
+
+            var issuer = jwt["Issuer"];
+            var audience = jwt["Audience"];
+            var keyStr = jwt["Key"];
+
+            if (string.IsNullOrWhiteSpace(keyStr))
+            {
+                throw new InvalidOperationException(
+                    "Falta Jwt:Key en appsettings.json");
+            }
+
+            var key =
+                new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(keyStr));
+
+            var creds =
+                new SigningCredentials(
+                    key,
+                    SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>
+    {
+        new Claim(
+            JwtRegisteredClaimNames.Sub,
+            username),
+
+        new Claim(
+            "userId",
+            userId.ToString()),
+
+        new Claim(
+            "username",
+            username),
+
+        // Impide confundirlo con un JWT definitivo.
+        new Claim(
+            "tokenType",
+            "PROFILE_SELECTION")
+    };
+
+            var token =
+                new JwtSecurityToken(
+                    issuer,
+                    audience,
+                    claims,
+                    expires: DateTime.UtcNow.AddMinutes(5),
+                    signingCredentials: creds);
+
+            return new JwtSecurityTokenHandler()
+                .WriteToken(token);
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
+
+
+
+
 }
