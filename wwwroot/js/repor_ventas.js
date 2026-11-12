@@ -51,8 +51,6 @@
         }).format(value || 0);
     }
 
-
-
     function getAuthHeaders() {
         const token = localStorage.getItem("jwtToken") || localStorage.getItem("token") || "";
 
@@ -73,10 +71,6 @@
 
         return await response.json();
     }
-
-
-
-
 
     function getEstadoBadge(cumplimientoPct) {
         if (cumplimientoPct >= 100) {
@@ -135,12 +129,11 @@
         }
     }
 
-
     async function cargarProyeccionCierre() {
         try {
             const anio = document.getElementById("filtroAnio")?.value;
             const mes = document.getElementById("filtroMes")?.value;
-            /*const categoria = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";*/
+
             let categoria = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";
 
             categoria = categoria
@@ -150,39 +143,39 @@
 
             const division = document.getElementById("filtroDivision")?.value || "Todas";
 
-            const url = `/api/gerencia/proyeccion-cierre?anio=${anio}&mes=${mes}&categoria=${encodeURIComponent(categoria)}&division=${encodeURIComponent(division)}`;
+            const url =
+                `/api/gerencia/proyeccion-cierre` +
+                `?anio=${anio}` +
+                `&mes=${mes}` +
+                `&categoria=${encodeURIComponent(categoria)}` +
+                `&division=${encodeURIComponent(division)}`;
 
-            const response = await fetch(url, {
-                headers: {
-                    "Authorization": `Bearer ${localStorage.getItem("jwtToken") || localStorage.getItem("token") || ""}`
-                }
-            });
+            // UNA SOLA llamada al API
+            const result = await fetchJsonAuth(url);
 
-            if (!response.ok) {
-                throw new Error("Error al cargar proyección de cierre");
+            if (!result || result.ok === false) {
+                throw new Error(
+                    result?.mensaje || "Error al cargar proyección de cierre"
+                );
             }
 
-            const result = await fetchJsonAuth(url);
-            const data = result.data || {};   // 👈 ESTE ES EL FIX
-            // 🔍 DEBUG (AQUÍ VA)
+            const data = result.data || {};
+
             console.log("DATA PROYECCION:", data);
 
             proyeccionCierreEquipos = data.equipos || [];
             proyeccionCierreVendedores = data.vendedores || [];
 
-            // 🔍 DEBUG (AQUÍ TAMBIÉN)
             console.log("EQUIPOS PROYECCION:", proyeccionCierreEquipos);
             console.log("VENDEDORES PROYECCION:", proyeccionCierreVendedores);
 
             renderResumenProyeccionCierre();
             renderDetalleProyeccionCierre();
 
-
         } catch (error) {
             console.error("Error cargarProyeccionCierre:", error);
         }
     }
-
 
     function cargarSelectEquipoProyeccionCierre() {
         const select = document.getElementById("selectEquipoProyeccionCierre");
@@ -292,11 +285,6 @@
         });
     }
 
-
-
-
-
-
     function formatMoney(value) {
         return Number(value || 0).toLocaleString("es-CL", {
             style: "currency",
@@ -368,7 +356,9 @@
         const labels = equiposOrdenados.map(x => x.equipo);
         const ventas = equiposOrdenados.map(x => x.venta || 0);
         const metas = equiposOrdenados.map(x => x.meta || 0);
-        const cumplimientos = equiposOrdenados.map(x => Number((x.cumplimientoPct || 0).toFixed(2)));
+        const cumplimientos = equiposOrdenados.map(
+            x => Number((x.cumplimientoPct || 0).toFixed(2))
+        );
 
         chartVentaMeta = new Chart(chartVentaMetaCanvas, {
             type: "bar",
@@ -419,16 +409,12 @@
                         grid: { display: false }
                     },
                     y: {
+                        beginAtZero: true,
                         ticks: {
-                            color: "#1f2a33",
                             callback(value) {
-                                return new Intl.NumberFormat("es-CL", {
-                                    notation: "compact",
-                                    maximumFractionDigits: 1
-                                }).format(value);
+                                return formatCurrency(value);
                             }
-                        },
-                        grid: { color: "#dde3e8" }
+                        }
                     }
                 }
             }
@@ -442,23 +428,12 @@
                     {
                         label: "Cumplimiento %",
                         data: cumplimientos,
-                        backgroundColor: cumplimientos.map(v =>
-                            v >= 100 ? "#7fb36a" :
-                                v >= 90 ? "#f7d774" :
-                                    "#d36b6b"
-                        ),
-                        borderColor: cumplimientos.map(v =>
-                            v >= 100 ? "#6aa058" :
-                                v >= 90 ? "#d5b24d" :
-                                    "#ba5656"
-                        ),
                         borderWidth: 1,
                         borderRadius: 4
                     }
                 ]
             },
             options: {
-                indexAxis: "y",
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 900 },
@@ -467,25 +442,27 @@
                     tooltip: {
                         callbacks: {
                             label(context) {
-                                return `Cumplimiento: ${formatNumber(context.parsed.x)}%`;
+                                return `${formatNumber(context.parsed.y || 0)}%`;
                             }
                         }
                     }
                 },
                 scales: {
                     x: {
-                        beginAtZero: true,
                         ticks: {
                             color: "#1f2a33",
+                            maxRotation: 0,
+                            minRotation: 0
+                        },
+                        grid: { display: false }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
                             callback(value) {
                                 return `${value}%`;
                             }
-                        },
-                        grid: { color: "#dde3e8" }
-                    },
-                    y: {
-                        ticks: { color: "#1f2a33" },
-                        grid: { display: false }
+                        }
                     }
                 }
             }
@@ -592,10 +569,6 @@
         }
     }
 
-
-
-
-
     function renderFiltrosEquipo() {
         const filtroVend = document.getElementById("filtroEquipoVendedor");
         const filtroProd = document.getElementById("filtroEquipoProducto");
@@ -604,7 +577,9 @@
 
         const equiposUnicos = [...new Set(dataEquipos.map(x => x.equipo).filter(Boolean))].sort();
 
-        const options = equiposUnicos.map(eq => `<option value="${eq}">${eq}</option>`).join("");
+        const options = equiposUnicos
+            .map(eq => `<option value="${eq}">${eq}</option>`)
+            .join("");
 
         filtroVend.innerHTML = options;
         filtroProd.innerHTML = options;
@@ -635,7 +610,6 @@
 
     // ======================================================================
 
-
     function normalizarTexto(valor) {
         return (valor || "").toString().trim().toUpperCase();
     }
@@ -650,17 +624,19 @@
         return select ? select.value : "";
     }
 
-
     function renderDetalleVendedores(data) {
         const tbody = document.getElementById("tbodyDetalleVendedor");
         if (!tbody) return;
 
-        const equipoSeleccionado = document.getElementById("filtroEquipoVendedor")?.value?.trim() || "";
+        const equipoSeleccionado =
+            document.getElementById("filtroEquipoVendedor")?.value?.trim() || "";
 
         const filtrados = (data || []).filter(x => {
             const equipoFila = (x.equipo ?? x.Equipo ?? "").trim();
 
-            if (!equipoSeleccionado || equipoSeleccionado === "Todos") return true;
+            if (!equipoSeleccionado || equipoSeleccionado === "Todos") {
+                return true;
+            }
 
             return equipoFila === equipoSeleccionado;
         });
@@ -693,19 +669,19 @@
     `).join("");
     }
 
-
-
-
     function renderDetalleProductos(data) {
         const tbody = document.getElementById("tbodyDetalleProducto");
         if (!tbody) return;
 
-        const equipoSeleccionado = document.getElementById("filtroEquipoProducto")?.value?.trim() || "";
+        const equipoSeleccionado =
+            document.getElementById("filtroEquipoProducto")?.value?.trim() || "";
 
         const filtrados = (data || []).filter(x => {
             const equipoFila = (x.equipo ?? x.Equipo ?? "").trim();
 
-            if (!equipoSeleccionado || equipoSeleccionado === "Todos") return true;
+            if (!equipoSeleccionado || equipoSeleccionado === "Todos") {
+                return true;
+            }
 
             return equipoFila === equipoSeleccionado;
         });
@@ -736,8 +712,6 @@
     `).join("");
     }
 
-
-
     function renderAnalisisProducto(productos, equipoSeleccionado) {
         console.log("PRODUCTOS:", productos);
         console.log("EQUIPO SELECCIONADO:", equipoSeleccionado);
@@ -750,9 +724,14 @@
 
                 return normalizarTexto(p.equipo || p.Equipo) === normalizarTexto(equipo);
             })
-            .sort((a, b) => ((b.venta ?? b.Venta ?? 0) - (a.venta ?? a.Venta ?? 0)));
+            .sort((a, b) =>
+                ((b.venta ?? b.Venta ?? 0) - (a.venta ?? a.Venta ?? 0))
+            );
 
-        const tbody = document.querySelector("#tblProductos tbody") || document.getElementById("tbodyDetalleProducto");
+        const tbody =
+            document.querySelector("#tblProductos tbody") ||
+            document.getElementById("tbodyDetalleProducto");
+
         if (!tbody) return;
 
         if (!filtrados.length) {
@@ -791,8 +770,6 @@
     }
 
     // ==================================================================
-
-
 
     function renderClientesTop(data) {
         const tbody = document.getElementById("tbodyTopClientesEquipo");
@@ -838,8 +815,6 @@
     `).join("");
     }
 
-
-
     function actualizarTopClientesEquipo() {
         const filtro = document.getElementById("filtroEquipoVendedor");
         if (!filtro) return;
@@ -847,7 +822,9 @@
         const equipo = (filtro.value || "").trim().toUpperCase();
 
         const top5 = dataClientesTop
-            .filter(x => ((x.equipo || "").trim().toUpperCase() === equipo))
+            .filter(x =>
+                (x.equipo || "").trim().toUpperCase() === equipo
+            )
             .sort((a, b) => (b.venta || 0) - (a.venta || 0))
             .slice(0, 5);
 
@@ -866,26 +843,106 @@
         const detalle = dataVendedores.filter(x => x.equipo === equipo);
         const resumenEquipo = dataEquipos.find(x => x.equipo === equipo);
 
+        // Actualizar cards del equipo seleccionado
         kpiVenta.textContent = formatCurrency(resumenEquipo?.venta ?? 0);
         kpiMeta.textContent = formatCurrency(resumenEquipo?.meta ?? 0);
 
+        // Actualizar detalle de vendedores
         renderDetalleVendedores(detalle);
+
+        // Actualizar Top Clientes
         actualizarTopClientesEquipo();
     }
 
+
+
     function actualizarVistaProductos() {
         const filtro = document.getElementById("filtroEquipoProducto");
-        if (!filtro) return;
 
-        const equipo = (filtro.value || "").trim().toUpperCase();
+        if (!filtro) {
+            renderDetalleProductos(dataProductos);
+            return;
+        }
 
-        const detalle = dataProductos.filter(x =>
-            ((x.equipo || "").trim().toUpperCase() === equipo)
+        const equipo = filtro.value;
+
+        const productosFiltrados = dataProductos.filter(x =>
+            !equipo || x.equipo === equipo
         );
 
-        renderDetalleProductos(detalle);
-        renderTopProductos(detalle);
+        renderDetalleProductos(productosFiltrados);
+
+        const top5 = [...productosFiltrados]
+            .sort((a, b) => (b.venta || 0) - (a.venta || 0))
+            .slice(0, 5);
+
+        actualizarGraficoTopProductos(
+            top5.map(x => x.producto || ""),
+            top5.map(x => x.venta || 0)
+        );
     }
+
+    function actualizarGraficoTopProductos(labels, valores) {
+        if (!chartTopProductosCanvas) return;
+
+        if (chartTopProductos) {
+            chartTopProductos.destroy();
+            chartTopProductos = null;
+        }
+
+        chartTopProductos = new Chart(chartTopProductosCanvas, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "Venta",
+                        data: valores,
+                        backgroundColor: "#5c6b7a",
+                        borderColor: "#44515d",
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 700
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label(context) {
+                                return `Venta: ${formatCurrency(context.parsed.x || 0)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback(value) {
+                                return formatCurrency(value);
+                            }
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
 
     function renderTopProductos(data) {
         if (!chartTopProductosCanvas) return;
@@ -935,7 +992,6 @@
         });
     }
 
-   
 
     function exportarExcelGerencial() {
 
@@ -996,10 +1052,10 @@
         XLSX.writeFile(wb, nombreArchivo);
     }
 
-    /*
-    async function actualizarDashboard() {
-        await cargarProyeccionCierre();
-    }*/
+
+    // ============================================================
+    // ACTUALIZACIÓN GENERAL DEL DASHBOARD
+    // ============================================================
 
     async function actualizarDashboard() {
         await Promise.allSettled([
@@ -1010,61 +1066,18 @@
     }
 
 
+    // ============================================================
+    // BOTÓN ACTUALIZAR
+    // ============================================================
 
     if (btnActualizar) {
         btnActualizar.addEventListener("click", actualizarDashboard);
     }
 
 
-
-    document.addEventListener("DOMContentLoaded", async () => {
-
-        const btnExportar = document.getElementById("btnExportarExcel");
-        const btnCerrarMes = document.getElementById("btnCerrarMes");
-        const btnCerrarSesion = document.getElementById("btnCerrarSesion");
-
-        if (btnExportar) {
-            btnExportar.addEventListener("click", exportarExcelGerencial);
-        }
-
-        if (btnCerrarMes) {
-            btnCerrarMes.addEventListener("click", cerrarOReprocesarMes);
-        }
-
-        if (btnCerrarSesion) {
-            btnCerrarSesion.addEventListener("click", () => {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.href = "/login.html";
-            });
-        }
-
-        mostrarSesionActual();
-
-        await actualizarDashboard();
-    });
-
-
-
-
-    document.addEventListener("change", (e) => {
-
-        if (e.target && e.target.id === "filtroEquipoVendedor") {
-            console.log("Cambio equipo vendedor:", e.target.value);
-            renderDetalleVendedores(dataVendedores || []);
-            renderClientesTop(dataClientesTop || []);
-        }
-
-        if (e.target && e.target.id === "filtroEquipoProducto") {
-            console.log("Cambio equipo producto:", e.target.value);
-            renderDetalleProductos(dataProductos || []);
-        }
-
-        if (e.target && e.target.id === "selectEquipoProyeccionCierre") {
-            renderDetalleProyeccionCierre();
-        }
-    });
-
+    // ============================================================
+    // SESIÓN
+    // ============================================================
 
     function getSesionActual() {
         const usuario =
@@ -1106,8 +1119,14 @@
         if (!info) return;
 
         const sesion = getSesionActual();
-        info.textContent = `Usuario: ${sesion.usuario} | Rol: ${sesion.role || "Sin rol"}`;
+        info.textContent =
+            `Usuario: ${sesion.usuario} | Rol: ${sesion.role || "Sin rol"}`;
     }
+
+
+    // ============================================================
+    // ESTADO CIERRE MENSUAL
+    // ============================================================
 
     async function cargarEstadoCierreMes() {
         console.log("Ejecutando cargarEstadoCierreMes");
@@ -1144,10 +1163,20 @@
 
         const anio = document.getElementById("filtroAnio")?.value;
         const mes = document.getElementById("filtroMes")?.value;
-        const categoriaVenta = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";
-        const division = document.getElementById("filtroDivision")?.value || "Todas";
+        const categoriaVenta =
+            document.getElementById("filtroCategoria")?.value ||
+            "Ventas Quimicos";
 
-        const url = `/api/gerencia/cierre-mensual?anio=${anio}&mes=${mes}&categoriaVenta=${encodeURIComponent(categoriaVenta)}&division=${encodeURIComponent(division)}`;
+        const division =
+            document.getElementById("filtroDivision")?.value ||
+            "Todas";
+
+        const url =
+            `/api/gerencia/cierre-mensual` +
+            `?anio=${anio}` +
+            `&mes=${mes}` +
+            `&categoriaVenta=${encodeURIComponent(categoriaVenta)}` +
+            `&division=${encodeURIComponent(division)}`;
 
         try {
             const response = await fetch(url, {
@@ -1179,11 +1208,22 @@
         }
     }
 
+
+    // ============================================================
+    // CERRAR / REPROCESAR MES
+    // ============================================================
+
     async function cerrarOReprocesarMes() {
         const anio = document.getElementById("filtroAnio")?.value;
         const mes = document.getElementById("filtroMes")?.value;
-        const categoriaVenta = document.getElementById("filtroCategoria")?.value || "Ventas Quimicos";
-        const division = document.getElementById("filtroDivision")?.value || "Todas";
+
+        const categoriaVenta =
+            document.getElementById("filtroCategoria")?.value ||
+            "Ventas Quimicos";
+
+        const division =
+            document.getElementById("filtroDivision")?.value ||
+            "Todas";
 
         const observacion = prompt(
             "Ingrese observación del cierre/reproceso:",
@@ -1199,7 +1239,14 @@
 
         if (!confirmar) return;
 
-        const url = `/api/gerencia/cerrar-mes?anio=${anio}&mes=${mes}&categoriaVenta=${encodeURIComponent(categoriaVenta)}&division=${encodeURIComponent(division)}&forzarReproceso=true&observacion=${encodeURIComponent(observacion)}`;
+        const url =
+            `/api/gerencia/cerrar-mes` +
+            `?anio=${anio}` +
+            `&mes=${mes}` +
+            `&categoriaVenta=${encodeURIComponent(categoriaVenta)}` +
+            `&division=${encodeURIComponent(division)}` +
+            `&forzarReproceso=true` +
+            `&observacion=${encodeURIComponent(observacion)}`;
 
         const response = await fetch(url, {
             method: "POST",
@@ -1214,20 +1261,34 @@
         }
 
         alert(result.mensaje);
+
         await actualizarDashboard();
     }
 
+
+    // ============================================================
+    // INICIALIZACIÓN
+    // IMPORTANTE: DEBE EXISTIR SOLO UNA VEZ
+    // ============================================================
+
     document.addEventListener("DOMContentLoaded", async () => {
+
         const btnExportar = document.getElementById("btnExportarExcel");
         const btnCerrarMes = document.getElementById("btnCerrarMes");
         const btnCerrarSesion = document.getElementById("btnCerrarSesion");
 
         if (btnExportar) {
-            btnExportar.addEventListener("click", exportarExcelGerencial);
+            btnExportar.addEventListener(
+                "click",
+                exportarExcelGerencial
+            );
         }
 
         if (btnCerrarMes) {
-            btnCerrarMes.addEventListener("click", cerrarOReprocesarMes);
+            btnCerrarMes.addEventListener(
+                "click",
+                cerrarOReprocesarMes
+            );
         }
 
         if (btnCerrarSesion) {
@@ -1238,28 +1299,60 @@
             });
         }
 
+        // ==========================================
+        // Año y mes actual por defecto
+        // ==========================================
+        const fechaActual = new Date();
+
+        if (filtroAnio) {
+            filtroAnio.value = fechaActual.getFullYear().toString();
+        }
+
+        if (filtroMes) {
+            filtroMes.value = (fechaActual.getMonth() + 1).toString();
+        }
+
+
         mostrarSesionActual();
+
+        // Carga inicial del dashboard: UNA SOLA VEZ
         await actualizarDashboard();
     });
 
+
+    // ============================================================
+    // CAMBIOS EN SELECTORES
+    // IMPORTANTE: DEBE EXISTIR SOLO UNA VEZ
+    // ============================================================
+
     document.addEventListener("change", (e) => {
+
         if (e.target && e.target.id === "filtroEquipoVendedor") {
+            console.log(
+                "Cambio equipo vendedor:",
+                e.target.value
+            );
+
             renderDetalleVendedores(dataVendedores || []);
             renderClientesTop(dataClientesTop || []);
         }
 
         if (e.target && e.target.id === "filtroEquipoProducto") {
+            console.log(
+                "Cambio equipo producto:",
+                e.target.value
+            );
+
             renderDetalleProductos(dataProductos || []);
         }
 
-        if (e.target && e.target.id === "selectEquipoProyeccionCierre") {
+        if (
+            e.target &&
+            e.target.id === "selectEquipoProyeccionCierre"
+        ) {
             renderDetalleProyeccionCierre();
         }
     });
-    
-
 
 
 })();
-
-
