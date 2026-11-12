@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Security.Claims;
 using System.Text;
+using SpartanVentasApi.Services.RindeSpartan;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -242,6 +243,14 @@ builder.Services
         });
 
 builder.Services.AddAuthorization();
+
+// ==========================================================
+// RINDESPARTAN - LECTURA DE COMPROBANTES
+// ==========================================================
+
+builder.Services.AddScoped<RindeComprobanteReader>();
+builder.Services.AddScoped<RindeImagenOcrService>();
+
 
 // ==========================================================
 // PIPELINE HTTP

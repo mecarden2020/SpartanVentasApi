@@ -1,105 +1,443 @@
-﻿body {
-    background: #f5f6f8;
-    font-family: Arial, Helvetica, sans-serif;
+﻿
+/* ================================================
+   RINDESPARTAN - IDENTIDAD CORPORATIVA
+   Compatible con Nueva Rendición, Mis Rendiciones,
+   Aprobaciones y Administración.
+   ================================================ */
+
+:root {
+    --spartan-azul: #103d80;
+    --spartan-azul-oscuro: #0b2f66;
+    --spartan-azul-claro: #eaf1fb;
+    --spartan-amarillo: #f5c84c;
+    --spartan-fondo: #f3f5f8;
+    --spartan-blanco: #ffffff;
+    --spartan-texto: #263746;
+    --spartan-borde: #dce3ed;
+    --spartan-gris: #64748b;
 }
 
-/* HEADER */
+/* ================================================
+   ESTRUCTURA GENERAL
+   ================================================ */
+
+body {
+    background: var(--spartan-fondo);
+    color: var(--spartan-texto);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--spartan-azul);
+}
+
+a {
+    color: var(--spartan-azul);
+}
+
+    a:hover {
+        color: var(--spartan-azul-oscuro);
+    }
+
+/* ================================================
+   ENCABEZADO CORPORATIVO
+   ================================================ */
+
 .rinde-header {
-    height: 80px;
-    background: #111827;
+    min-height: 80px;
+    background: linear-gradient( 110deg, var(--spartan-azul), var(--spartan-azul-oscuro) );
     color: white;
-    border-bottom: 4px solid #f4b400;
+    border-bottom: 3px solid var(--spartan-amarillo);
+    box-shadow: 0 2px 8px rgba(15, 46, 91, 0.10);
 }
 
 .logo-spartan {
     height: 42px;
+    width: auto;
+    object-fit: contain;
 }
 
 .titulo-modulo {
     margin: 0;
-    font-size: 24px;
-    font-weight: bold;
+    color: white;
+    font-size: 23px;
+    font-weight: 700;
 }
 
 .subtitulo-modulo {
-    font-size: 13px;
-    opacity: .8;
+    color: #e6eefb;
+    font-size: 12px;
+    opacity: 0.95;
 }
 
 .usuario-box {
-    font-size: 14px;
-    font-weight: bold;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: right;
 }
 
-/* TARJETAS */
+/* ================================================
+   TARJETAS
+   ================================================ */
+
 .card-rinde {
-    border: none;
-    border-radius: 14px;
+    background: var(--spartan-blanco);
+    border: 1px solid var(--spartan-borde);
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(16, 61, 128, 0.05);
 }
+
+    .card-rinde > .card-body {
+        padding: 24px;
+    }
+
+    .card-rinde h4 {
+        font-size: 23px;
+        font-weight: 700;
+        color: var(--spartan-azul);
+    }
 
 .card-titulo {
-    font-size: 15px;
-    color: #666;
-    margin-bottom: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--spartan-gris);
+    margin-bottom: 8px;
 }
 
 .saldo-monto {
-    font-size: 34px;
-    font-weight: bold;
-    color: #111827;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--spartan-azul);
 }
 
-/* FOOTER */
-.footer-rinde {
+/* ================================================
+   FORMULARIO TRADICIONAL DE RENDICIÓN
+   ================================================ */
+
+.rinde-seccion {
+    background: #ffffff;
+    border: 1px solid var(--spartan-borde);
+    border-radius: 10px;
     padding: 20px;
-    font-size: 12px;
-    color: #888;
+    margin-bottom: 22px;
 }
-/* FIN FOOTER PARA MCF  */
 
-/* TABLAS */
+    .rinde-seccion h5 {
+        color: var(--spartan-azul);
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+
+.form-label {
+    color: var(--spartan-texto);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.form-control,
+.form-select {
+    border: 1px solid #cfd8e4;
+    border-radius: 6px;
+    font-size: 14px;
+    min-height: 38px;
+}
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--spartan-azul);
+        box-shadow: 0 0 0 3px rgba(16, 61, 128, 0.10);
+    }
+
+    .form-control[readonly] {
+        background: #f1f5fa;
+        color: #475569;
+    }
+
+/* ================================================
+   BOTONES CORPORATIVOS
+   ================================================ */
+
+.btn-primary {
+    background: var(--spartan-azul);
+    border-color: var(--spartan-azul);
+    color: white;
+}
+
+    .btn-primary:hover,
+    .btn-primary:focus {
+        background: var(--spartan-azul-oscuro);
+        border-color: var(--spartan-azul-oscuro);
+        color: white;
+    }
+
+.btn-warning {
+    background: var(--spartan-amarillo);
+    border-color: var(--spartan-amarillo);
+    color: #172b4d;
+    font-weight: 700;
+}
+
+    .btn-warning:hover {
+        background: #eab933;
+        border-color: #eab933;
+        color: #172b4d;
+    }
+
+.btn-outline-dark {
+    color: var(--spartan-azul);
+    border-color: var(--spartan-azul);
+}
+
+    .btn-outline-dark:hover {
+        background: var(--spartan-azul);
+        border-color: var(--spartan-azul);
+        color: white;
+    }
+
+.btn-outline-secondary {
+    border-color: #cbd5e1;
+    color: var(--spartan-azul);
+}
+
+    .btn-outline-secondary:hover {
+        background: var(--spartan-azul-claro);
+        border-color: var(--spartan-azul);
+        color: var(--spartan-azul);
+    }
+
+/* ================================================
+   TABLAS GENERALES
+   ================================================ */
+
+.table {
+    color: var(--spartan-texto);
+}
+
+    .table td,
+    .table th {
+        vertical-align: middle;
+    }
+
 .tabla-rinde-head th {
-    background: #111827 !important;
+    background: var(--spartan-azul) !important;
     color: white !important;
     font-weight: 600;
-    border: none;
+    border-color: var(--spartan-azul) !important;
 }
 
-.table td,
-.table th {
-    vertical-align: middle;
-}
-
-/* BUSCADOR */
-.buscador-rinde {
-    max-width: 250px;
-}
-
-/* MODAL APROBADOR */
-.modal-rinde-header {
-    background: #111827;
-    color: white;
-    border-bottom: 4px solid #f4b400;
-}
-
-.detalle-box {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 10px;
-}
-
-/* ADMIN RINDESPARTAN */
-.modal-body .form-label {
-    font-weight: 600;
+.table-hover tbody tr:hover td {
+    background: #f1f6ff;
 }
 
 .table .btn-sm {
     padding: 4px 10px;
 }
 
-.badge {
-    font-size: 12px;
+/* ================================================
+   PLANILLA DE GASTOS
+   ================================================ */
+
+.tabla-gastos {
+    min-width: 1120px;
+    font-size: 13px;
+    border-color: var(--spartan-borde);
 }
 
+    .tabla-gastos thead th {
+        background: var(--spartan-azul) !important;
+        color: white !important;
+        border-color: #315b95 !important;
+        text-align: center;
+        vertical-align: middle;
+        white-space: nowrap;
+        font-weight: 600;
+        padding: 12px 9px;
+    }
 
+    .tabla-gastos tbody td {
+        background: white;
+        padding: 10px 9px;
+        vertical-align: middle;
+    }
+
+    .tabla-gastos .monto {
+        text-align: right;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .tabla-gastos tfoot td {
+        background: var(--spartan-azul-claro) !important;
+        color: var(--spartan-azul-oscuro);
+        font-weight: 700;
+        padding: 12px 9px;
+    }
+
+.adjunto-nombre {
+    display: block;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    color: var(--spartan-gris);
+}
+
+/* ================================================
+   RESUMEN DE LIQUIDACIÓN
+   ================================================ */
+
+.resumen-total {
+    background: #f2f6fd;
+    border: 1px solid #c8d8f1;
+    border-left: 4px solid var(--spartan-azul);
+    border-radius: 9px;
+    padding: 20px;
+    height: 100%;
+}
+
+    .resumen-total strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--spartan-azul);
+    }
+
+    .resumen-total + .table {
+        margin-bottom: 0;
+    }
+
+#resumenSaldo {
+    color: var(--spartan-azul);
+    font-size: 17px;
+    font-weight: 700;
+}
+
+#totalRendicion {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ================================================
+   BUSCADOR
+   ================================================ */
+
+.buscador-rinde {
+    max-width: 250px;
+}
+
+/* ================================================
+   MODAL APROBADOR
+   ================================================ */
+
+.modal-rinde-header {
+    background: var(--spartan-azul);
+    color: white;
+    border-bottom: 3px solid var(--spartan-amarillo);
+}
+
+    .modal-rinde-header .modal-title {
+        color: white;
+    }
+
+    .modal-rinde-header .btn-close {
+        filter: invert(1) grayscale(100%);
+    }
+
+.detalle-box {
+    background: #f5f8fc;
+    border: 1px solid var(--spartan-borde);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+/* ================================================
+   ADMINISTRACIÓN
+   ================================================ */
+
+.modal-body .form-label {
+    font-weight: 600;
+}
+
+.badge {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ================================================
+   MENSAJES Y ESTADOS
+   ================================================ */
+
+.alert {
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.alert-info {
+    background: #eaf2ff;
+    border-color: #c5d9f8;
+    color: #16447e;
+}
+
+/* ================================================
+   PIE DE PÁGINA
+   ================================================ */
+
+.footer-rinde {
+    padding: 24px 16px;
+    color: #8390a4;
+    font-size: 11px;
+    text-align: center;
+}
+
+/* FIN FOOTER PARA MCF */
+
+/* ================================================
+   RESPONSIVE
+   ================================================ */
+
+@media (max-width: 768px) {
+
+    .rinde-header {
+        min-height: 72px;
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    .titulo-modulo {
+        font-size: 19px;
+    }
+
+    .subtitulo-modulo {
+        font-size: 11px;
+    }
+
+    .logo-spartan {
+        height: 34px;
+    }
+
+    .usuario-box {
+        font-size: 11px;
+    }
+
+    .card-rinde > .card-body {
+        padding: 16px;
+    }
+
+    .rinde-seccion {
+        padding: 14px;
+    }
+
+    .tabla-gastos {
+        font-size: 12px;
+    }
+
+    .resumen-total strong {
+        font-size: 24px;
+    }
+}

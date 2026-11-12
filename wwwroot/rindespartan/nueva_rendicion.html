@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -7,16 +8,21 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="css/rindespartan.css" rel="stylesheet">
+
+
 </head>
 
 <body>
-
     <header class="rinde-header d-flex align-items-center px-4">
-        <img src="/img/spartan-logo.png" alt="Spartan" class="logo-spartan">
+        <img src="/img/spartan-logo.png"
+             alt="Spartan"
+             class="logo-spartan">
 
         <div class="ms-3">
             <h1 class="titulo-modulo">RindeSpartan</h1>
-            <div class="subtitulo-modulo">Nueva Rendición de Gastos</div>
+            <div class="subtitulo-modulo">
+                Informe de Rendición de Gastos
+            </div>
         </div>
 
         <div class="ms-auto usuario-box">
@@ -24,10 +30,12 @@
         </div>
     </header>
 
-    <main class="container mt-4">
+    <main class="container-fluid px-4 mt-4">
 
         <div class="mb-3">
-            <button class="btn btn-outline-secondary" onclick="location.href='index.html'">
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    onclick="location.href='index.html'">
                 ← Volver al inicio
             </button>
         </div>
@@ -35,129 +43,271 @@
         <div class="card card-rinde shadow-sm">
             <div class="card-body">
 
-                <h4 class="mb-4">Registrar nueva rendición</h4>
+                <h4 class="mb-4">
+                    Nueva Rendición de Gastos
+                </h4>
 
                 <form id="formNuevaRendicion">
 
-                    <div class="row g-3 mb-4">
+                    <!-- CABECERA -->
 
-                        <div class="col-md-4">
-                            <label class="form-label">Tipo de gasto</label>
-                            <select class="form-select" id="tipoGasto" required>
-                                <option value="">Seleccione...</option>
-                                <option value="COMBUSTIBLE">Combustible</option>
-                                <option value="ALIMENTACION">Alimentación</option>
-                                <option value="ALOJAMIENTO">Alojamiento</option>
-                                <option value="ESTACIONAMIENTO">Estacionamiento</option>
-                                <option value="PEAJE">Peaje</option>
-                                <option value="MOVILIZACION">Movilización</option>
-                                <option value="OTRO">Otro</option>
-                            </select>
+                    <section class="rinde-seccion">
+                        <h5 class="mb-3">1. Datos del informe</h5>
+
+                        <div class="row g-3 align-items-end">
+                            <div class="col-lg-6">
+                                <label class="form-label" for="objetivo">Objetivo de la rendición</label>
+                                <input type="text" class="form-control" id="objetivo"
+                                       maxlength="500" required placeholder="Ej: Visita a clientes">
+                            </div>
+
+                            <div class="col-lg-3 col-md-6">
+                                <label class="form-label" for="periodoGasto">Período de gasto</label>
+                                <input type="month" class="form-control" id="periodoGasto" required>
+                            </div>
+
+                            <div class="col-lg-3 col-md-6">
+                                <label class="form-label" for="fechaRendicion">Fecha de rendición / contabilización SAP </label>
+                                <input type="date" class="form-control" id="fechaRendicion" required>
+                            </div>
+
+
+                            <div class="col-lg-3 col-md-6">
+                                <label class="form-label" for="provisionAnticipo">Provisión / Anticipo ($)</label>
+                                <input type="number" class="form-control" id="provisionAnticipo"
+                                       min="0" step="1" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="empleado">Empleado</label>
+                                <input type="text" class="form-control" id="empleado" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="supervisorNombre">Aprobador responsable</label>
+                                <input type="text" class="form-control" id="supervisorNombre"
+                                       placeholder="Pendiente de configuración" readonly>
+                                <input type="hidden" id="supervisorUsuarioId">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="justificacion">Justificación general</label>
+                                <textarea class="form-control" id="justificacion" rows="2"
+                                          maxlength="2000" required
+                                          placeholder="Explique el motivo de los gastos"></textarea>
+                            </div>
+                        </div>
+                        <!-- La fecha del informe se calcula al guardar la rendición. -->
+                    </section>
+
+                    <!-- INGRESO DOCUMENTOS -->
+
+                    <section class="rinde-seccion">
+                        <h5 class="mb-3">2. Ingreso de gastos y comprobantes</h5>
+
+                        <div class="row g-3 align-items-end">
+
+                            <div class="col-md-2">
+                                <label class="form-label">Fecha gasto *</label>
+                                <input type="date"
+                                       class="form-control"
+                                       id="docFechaDocumento">
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label">Tipo documento *</label>
+                                <select class="form-select"
+                                        id="docTipoDocumento">
+                                    <option value="">Seleccione...</option>
+                                    <option value="BOLETA">Boleta</option>
+                                    <option value="FACTURA">Factura</option>
+                                    <option value="COMPROBANTE">Comprobante</option>
+                                    <option value="OTRO">Otro</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label">N° documento / operación *</label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="docNumeroDocumento"
+                                       maxlength="100"
+                                       placeholder="Folio, operación o SIN FOLIO">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Acreedor / Proveedor *</label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="docProveedor"
+                                       maxlength="400">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Categoría de gasto</label>
+                                <select class="form-select"
+                                        id="docCategoriaGasto">
+                                    <option value="">Seleccione...</option>
+                                    <option value="ALOJAMIENTO">Alojamiento</option>
+                                    <option value="COMIDAS">Comidas</option>
+                                    <option value="TRANSPORTE">Transporte / Peajes</option>
+                                    <option value="COMBUSTIBLE">Combustible</option>
+                                    <option value="OTROS">Otros</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Descripción del gasto</label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="docDescripcionGasto"
+                                       maxlength="1000"
+                                       placeholder="Detalle del gasto realizado">
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label">Monto ($) *</label>
+                                <input type="number"
+                                       class="form-control"
+                                       id="docMonto"
+                                       min="1"
+                                       step="1"
+                                       placeholder="0">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Adjuntar comprobante</label>
+                                <input type="file"
+                                       class="form-control"
+                                       id="docArchivo"
+                                       accept=".pdf,.jpg,.jpeg,.png">
+                            </div>
+
+                            <div class="col-12">
+                                <div id="vistaPreviaComprobante" class="d-none p-3 bg-light border rounded"></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check border rounded p-3 ps-5 bg-light">
+                                    <input class="form-check-input" type="checkbox" id="docDatosConfirmados">
+                                    <label class="form-check-label" for="docDatosConfirmados">
+                                        Confirmo que revisé el comprobante adjunto y que la fecha, el número o referencia,
+                                        el proveedor y el monto corresponden a la imagen. Los datos sugeridos por OCR son editables.
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12 text-end">
+                                <button type="button"
+                                        class="btn btn-outline-dark"
+                                        id="btnAgregarDocumento">
+                                    + Agregar línea de gasto
+                                </button>
+                            </div>
+
                         </div>
 
-                        <div class="col-md-8">
-                            <label class="form-label">Justificación general</label>
-                            <input type="text" class="form-control" id="justificacion"
-                                   placeholder="Ej: Visita a cliente, terreno, traslado, reunión, etc." required>
+                        <!-- PLANILLA -->
+
+                        <div class="table-responsive mt-4">
+                            <table class="table table-bordered table-hover tabla-gastos">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Bol/Fact</th>
+                                        <th>Acreedor</th>
+                                        <th>Descripción</th>
+                                        <th>Alojamiento</th>
+                                        <th>Comidas</th>
+                                        <th>Transp/Peajes</th>
+                                        <th>Combustible</th>
+                                        <th>Otros</th>
+                                        <th>Adjunto</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="tbodyDocumentos">
+                                    <tr>
+                                        <td colspan="11"
+                                            class="text-center text-muted py-3">
+                                            No hay gastos agregados.
+                                        </td>
+                                    </tr>
+                                </tbody>
+
+                                <tfoot class="table-light fw-bold">
+                                    <tr>
+                                        <td colspan="4">Totales</td>
+                                        <td class="monto" id="totalAlojamiento">$0</td>
+                                        <td class="monto" id="totalComidas">$0</td>
+                                        <td class="monto" id="totalTransporte">$0</td>
+                                        <td class="monto" id="totalCombustible">$0</td>
+                                        <td class="monto" id="totalOtros">$0</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
                         </div>
+                    </section>
 
-                    </div>
+                    <!-- LIQUIDACIÓN -->
 
-                    <hr>
+                    <section class="rinde-seccion">
+                        <h5 class="mb-3">3. Resumen y liquidación</h5>
 
-                    <h5 class="mb-3">Documentos de respaldo</h5>
+                        <div class="row g-3">
 
-                    <div class="row g-3 align-items-end">
+                            <div class="col-md-6">
+                                <div class="resumen-total">
+                                    <div>Total gasto rendido</div>
+                                    <strong id="totalRendicion">$0</strong>
+                                </div>
+                            </div>
 
-                        <div class="col-md-3">
-                            <label class="form-label">Tipo documento</label>
-                            <select class="form-select" id="docTipoDocumento">
-                                <option value="">Seleccione...</option>
-                                <option value="BOLETA">Boleta</option>
-                                <option value="FACTURA">Factura</option>
-                                <option value="COMPROBANTE">Comprobante</option>
-                                <option value="OTRO">Otro</option>
-                            </select>
+                            <div class="col-md-6">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Provisión / Anticipo</td>
+                                            <td class="text-end" id="resumenAnticipo">$0</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Total rendido</td>
+                                            <td class="text-end" id="resumenRendido">$0</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Saldo provisional</th>
+                                            <th class="text-end" id="resumenSaldo">$0</th>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <small class="text-muted">
+                                    Saldo provisional = anticipo menos gastos rendidos.
+                                    La liquidación definitiva dependerá de la aprobación.
+                                </small>
+                            </div>
+
                         </div>
+                    </section>
 
-                        <div class="col-md-3">
-                            <label class="form-label">Fecha documento</label>
-                            <input type="date" class="form-control" id="docFechaDocumento">
-                        </div>
+                    <div id="mensajeValidacion"
+                         class="alert mt-4 d-none"
+                         role="alert"></div>
 
-                        <div class="col-md-3">
-                            <label class="form-label">N° documento</label>
-                            <input type="text" class="form-control" id="docNumeroDocumento" placeholder="Opcional">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">Proveedor</label>
-                            <input type="text" class="form-control" id="docProveedor" placeholder="Ej: Copec">
-                        </div>
-
-                        <div class="col-md-3">
-                            <label class="form-label">Monto</label>
-                            <input type="number" class="form-control" id="docMonto" min="1" step="1" placeholder="0">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Archivo</label>
-                            <input type="file" class="form-control" id="docArchivo" accept=".pdf,.jpg,.jpeg,.png">
-                        </div>
-
-                        <div class="col-md-3">
-                            <button type="button" class="btn btn-outline-dark w-100" id="btnAgregarDocumento">
-                                + Agregar documento
-                            </button>
-                        </div>
-
-                    </div>
-
-                    <div class="table-responsive mt-4">
-                        <table class="table table-hover align-middle">
-                            <thead class="tabla-rinde-head">
-                                <tr>
-                                    <th>Tipo</th>
-                                    <th>Fecha</th>
-                                    <th>N° Doc</th>
-                                    <th>Proveedor</th>
-                                    <th>Monto</th>
-                                    <th>Archivo</th>
-                                    <th>Quitar</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbodyDocumentos">
-                                <tr>
-                                    <td colspan="7" class="text-center text-muted py-3">
-                                        No hay documentos agregados.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="text-end mt-3">
-                        <div class="card-titulo">Total rendición</div>
-                        <div class="saldo-monto" id="totalRendicion">$0</div>
-                    </div>
-
-                    <div id="mensajeValidacion" class="alert mt-4 d-none"></div>
-
-                    <div class="mt-4 d-flex gap-2">
-                        <button type="submit" class="btn btn-warning btn-lg">
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit"
+                                class="btn btn-warning btn-lg"
+                                id="btnGuardarRendicion">
                             Guardar Rendición
                         </button>
 
-                        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="location.href='index.html'">
+                        <button type="button"
+                                class="btn btn-outline-secondary btn-lg"
+                                onclick="location.href='index.html'">
                             Cancelar
                         </button>
                     </div>
 
                 </form>
-
             </div>
         </div>
-
     </main>
 
     <footer class="footer-rinde text-center mt-5">
@@ -166,7 +316,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/rinde-core.js"></script>
-    <script src="js/rinde-nueva.js"></script>
-
+    <script src="js/rinde-nueva.js?v=20261014-02"></script>
 </body>
 </html>

@@ -28,57 +28,178 @@ namespace SpartanVentasApi.Controllers.RindeSpartan
 
         [HttpPost("nueva")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> CrearNuevaRendicion([FromForm] RindeNuevaSolicitudRequest request)
+        public async Task<IActionResult> CrearNuevaRendicion(
+            [FromForm] RindeNuevaSolicitudRequest request)
         {
             try
             {
-                if (request.Documentos == null || request.Documentos.Count == 0)
-                    return BadRequest(new { ok = false, mensaje = "Debe agregar al menos un documento." });
+                // ==========================================
+                // 1. VALIDACIONES GENERALES
+                // ==========================================
 
-                if (string.IsNullOrWhiteSpace(request.TipoGasto))
-                    return BadRequest(new { ok = false, mensaje = "Debe seleccionar el tipo de gasto." });
+                if (request.Documentos == null || request.Documentos.Count == 0)
+                    return BadRequest(new
+                    {
+                        ok = false,
+                        mensaje = "Debe agregar al menos un documento."
+                    });
 
                 if (string.IsNullOrWhiteSpace(request.Justificacion))
-                    return BadRequest(new { ok = false, mensaje = "Debe ingresar una justificación." });
+                    return BadRequest(new
+                    {
+                        ok = false,
+                        mensaje = "Debe ingresar una justificación."
+                    });
 
-                var extensionesPermitidas = new[] { ".pdf", ".jpg", ".jpeg", ".png" };
+                // Compatibilidad con formulario anterior
+                var tipoGasto = string.IsNullOrWhiteSpace(request.TipoGasto)
+                    ? "MULTIPLE"
+                    : request.TipoGasto.Trim();
+
+                if (request.PeriodoDesde.HasValue &&
+                    request.PeriodoHasta.HasValue &&
+                    request.PeriodoDesde.Value.Date > request.PeriodoHasta.Value.Date)
+                {
+                    return BadRequest(new
+                    {
+                        ok = false,
+                        mensaje = "El inicio del período no puede superar su fecha de término."
+                    });
+                }
+
+                if (request.ProvisionAnticipo.HasValue &&
+                    request.ProvisionAnticipo.Value < 0)
+                {
+                    return BadRequest(new
+                    {
+                        ok = false,
+                        mensaje = "La provisión de anticipo no puede ser negativa."
+                    });
+                }
+
+                if (request.SupervisorUsuarioId.HasValue &&
+                    request.SupervisorUsuarioId.Value <= 0)
+                {
+                    return BadRequest(new
+                    {
+                        ok = false,
+                        mensaje = "El supervisor indicado no es válido."
+                    });
+                }
+
+                var extensionesPermitidas = new[]
+                {
+            ".pdf", ".jpg", ".jpeg", ".png"
+        };
+
+                var categoriasPermitidas = new[]
+                {
+            "ALOJAMIENTO",
+            "COMIDAS",
+            "TRANSPORTE",
+            "COMBUSTIBLE",
+            "OTROS"
+        };
 
                 foreach (var doc in request.Documentos)
                 {
-                    if (doc.ArchivoDocumento == null || doc.ArchivoDocumento.Length == 0)
-                        return BadRequest(new { ok = false, mensaje = "Todos los documentos deben tener archivo adjunto." });
+                    if (doc.ArchivoDocumento == null ||
+                        doc.ArchivoDocumento.Length == 0)
+                        return BadRequest(new
+                        {
+                            ok = false,
+                            mensaje = "Todos los documentos deben tener archivo adjunto."
+                        });
 
                     if (doc.Monto <= 0)
-                        return BadRequest(new { ok = false, mensaje = "Todos los documentos deben tener monto mayor a cero." });
+                        return BadRequest(new
+                        {
+                            ok = false,
+                            mensaje = "Todos los documentos deben tener monto mayor a cero."
+                        });
 
                     if (string.IsNullOrWhiteSpace(doc.Proveedor))
-                        return BadRequest(new { ok = false, mensaje = "Todos los documentos deben tener proveedor." });
+                        return BadRequest(new
+                        {
+                            ok = false,
+                            mensaje = "Todos los documentos deben tener proveedor."
+                        });
 
                     if (string.IsNullOrWhiteSpace(doc.TipoDocumento))
-                        return BadRequest(new { ok = false, mensaje = "Todos los documentos deben tener tipo de documento." });
+                        return BadRequest(new
+                        {
+                            ok = false,
+                            mensaje = "Todos los documentos deben tener tipo de documento."
+                        });
 
-                    var extension = Path.GetExtension(doc.ArchivoDocumento.FileName).ToLowerInvariant();
+                    if (doc.FechaDocumento == default)
+                        return BadRequest(new
+                        {
+                            ok = false,
+                            mensaje = "Todos los documentos deben tener fecha."
+                        });
+
+                    if (!string.IsNullOrWhiteSpace(doc.CategoriaGasto) &&
+                        !categoriasPermitidas.Contains(
+                            doc.CategoriaGasto.Trim().ToUpperInvariant()))
+                        return BadRequest(new
+                        {
+                            ok = false,
+                            mensaje = "Uno de los documentos tiene una categoría no válida."
+                        });
+
+                    var extension = Path.GetExtension(
+                        doc.ArchivoDocumento.FileName).ToLowerInvariant();
 
                     if (!extensionesPermitidas.Contains(extension))
-                        return BadRequest(new { ok = false, mensaje = "Formato no permitido. Solo PDF, JPG, JPEG o PNG." });
+                        return BadRequest(new
+                        {
+                            ok = false,
+                            mensaje = "Formato no permitido. Solo PDF, JPG, JPEG o PNG."
+                        });
 
                     if (doc.ArchivoDocumento.Length > 5 * 1024 * 1024)
-                        return BadRequest(new { ok = false, mensaje = "Uno de los archivos supera los 5 MB permitidos." });
+                        return BadRequest(new
+                        {
+                            ok = false,
+                            mensaje = "Uno de los archivos supera los 5 MB permitidos."
+                        });
                 }
 
+                // ==========================================
+                // 2. IDENTIFICACIÓN DEL USUARIO
+                // ==========================================
 
-
-                // TEMPORAL: luego se obtendrá desde JWT / sesión
+                // TEMPORAL: reemplazar por JWT / sesión.
                 int usuarioId = 1;
                 string usuarioLogin = "mcardenas";
 
-                var montoTotal = request.Documentos.Sum(x => x.Monto);
-                var fechaDocumentoPrincipal = request.Documentos.Min(x => x.FechaDocumento);
+                // ==========================================
+                // 3. CÁLCULOS DE LA RENDICIÓN
+                // ==========================================
 
-                var anio = DateTime.Now.Year.ToString();
-                var mes = DateTime.Now.Month.ToString("00");
+                decimal montoTotal = request.Documentos.Sum(x => x.Monto);
 
-                var carpetaRelativa = Path.Combine(
+                DateTime fechaDocumentoPrincipal =
+                    request.Documentos.Min(x => x.FechaDocumento).Date;
+
+                DateTime fechaInforme =
+                    request.FechaInforme?.Date ?? DateTime.Today;
+
+                string objetivo = string.IsNullOrWhiteSpace(request.Objetivo)
+                    ? request.Justificacion.Trim()
+                    : request.Objetivo.Trim();
+
+                decimal provisionAnticipo = request.ProvisionAnticipo ?? 0m;
+
+                // ==========================================
+                // 4. CARPETA DE COMPROBANTES
+                // ==========================================
+
+                string anio = DateTime.Now.Year.ToString();
+                string mes = DateTime.Now.Month.ToString("00");
+
+                string carpetaRelativa = Path.Combine(
                     "uploads",
                     "rindespartan",
                     anio,
@@ -86,208 +207,308 @@ namespace SpartanVentasApi.Controllers.RindeSpartan
                     usuarioLogin
                 );
 
-                var carpetaFisica = Path.Combine(_env.WebRootPath, carpetaRelativa);
+                string carpetaFisica = Path.Combine(
+                    _env.WebRootPath,
+                    carpetaRelativa
+                );
 
-                if (!Directory.Exists(carpetaFisica))
-                    Directory.CreateDirectory(carpetaFisica);
+                Directory.CreateDirectory(carpetaFisica);
 
-                using var cn = new SqlConnection(_config.GetConnectionString("SAP"));
-                await cn.OpenAsync();
-
-                using var tx = cn.BeginTransaction();
+                // Archivos que deberán eliminarse si falla SQL
+                var archivosCreados = new List<string>();
 
                 try
                 {
-                    var sqlCabecera = @"
-                INSERT INTO dbo.RindeSolicitudes
-                (
-                    UsuarioId,
-                    FechaDocumento,
-                    TipoDocumento,
-                    NumeroDocumento,
-                    Proveedor,
-                    TipoGasto,
-                    Justificacion,
-                    Monto,
-                    Estado,
-                    RutaArchivo,
-                    NombreArchivo,
-                    ExtensionArchivo,
-                    PesoArchivoKB,
-                    FechaCreacion
-                )
-                VALUES
-                (
-                    @UsuarioId,
-                    @FechaDocumento,
-                    'MULTIPLE',
-                    NULL,
-                    'VARIOS DOCUMENTOS',
-                    @TipoGasto,
-                    @Justificacion,
-                    @Monto,
-                    'PENDIENTE',
-                    NULL,
-                    NULL,
-                    NULL,
-                    NULL,
-                    GETDATE()
-                );
+                    using var cn = new SqlConnection(
+                        _config.GetConnectionString("SAP"));
 
-                SELECT CAST(SCOPE_IDENTITY() AS INT);
-            ";
+                    await cn.OpenAsync();
 
-                    var solicitudId = await cn.ExecuteScalarAsync<int>(
-                        sqlCabecera,
-                        new
-                        {
-                            UsuarioId = usuarioId,
-                            FechaDocumento = fechaDocumentoPrincipal.Date,
-                            TipoGasto = request.TipoGasto,
-                            Justificacion = request.Justificacion,
-                            Monto = montoTotal
-                        },
-                        tx
-                    );
+                    using var tx = cn.BeginTransaction();
 
-                    var contador = 1;
-
-                    var folioRinde = $"RS-{DateTime.Now.Year}-{solicitudId.ToString("D6")}";
-
-                    await cn.ExecuteAsync(
-                                                @"
-                            UPDATE dbo.RindeSolicitudes
-                            SET FolioRinde = @FolioRinde
-                            WHERE Id = @SolicitudId;
-                            ",
-                        new
-                        {
-                            FolioRinde = folioRinde,
-                            SolicitudId = solicitudId
-                        },
-                        tx
-                    );
-
-
-                    foreach (var doc in request.Documentos)
+                    try
                     {
-                        var archivo = doc.ArchivoDocumento!;
-                        var extension = Path.GetExtension(archivo.FileName).ToLowerInvariant();
+                        // ==========================================
+                        // 5. CABECERA
+                        // ==========================================
 
-                        var nombreArchivo = $"RINDE_{solicitudId}_{contador}_{DateTime.Now:yyyyMMdd_HHmmssfff}{extension}";
-                        var rutaFisicaArchivo = Path.Combine(carpetaFisica, nombreArchivo);
+                        const string sqlCabecera = @"
+INSERT INTO dbo.RindeSolicitudes
+(
+    UsuarioId,
+    FechaDocumento,
+    TipoDocumento,
+    NumeroDocumento,
+    Proveedor,
+    TipoGasto,
+    Justificacion,
+    Monto,
+    Estado,
+    RutaArchivo,
+    NombreArchivo,
+    ExtensionArchivo,
+    PesoArchivoKB,
+    FechaCreacion,
 
-                        await using (var stream = new FileStream(rutaFisicaArchivo, FileMode.Create))
-                        {
-                            await archivo.CopyToAsync(stream);
-                        }
+    Objetivo,
+    FechaInforme,
+    PeriodoDesde,
+    PeriodoHasta,
+    SupervisorUsuarioId,
+    ProvisionAnticipo
+)
+VALUES
+(
+    @UsuarioId,
+    @FechaDocumento,
+    'MULTIPLE',
+    NULL,
+    'VARIOS DOCUMENTOS',
+    @TipoGasto,
+    @Justificacion,
+    @Monto,
+    'PENDIENTE',
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    GETDATE(),
 
-                        var rutaWeb = "/" + Path.Combine(carpetaRelativa, nombreArchivo).Replace("\\", "/");
+    @Objetivo,
+    @FechaInforme,
+    @PeriodoDesde,
+    @PeriodoHasta,
+    @SupervisorUsuarioId,
+    @ProvisionAnticipo
+);
 
-                        var sqlDetalle = @"
-                    INSERT INTO dbo.RindeSolicitudesAdjuntos
-                    (
-                        SolicitudId,
-                        TipoDocumento,
-                        NumeroDocumento,
-                        Proveedor,
-                        Monto,
-                        RutaArchivo,
-                        NombreArchivo,
-                        ExtensionArchivo,
-                        PesoArchivoKB,
-                        FechaCreacion
-                    )
-                    VALUES
-                    (
-                        @SolicitudId,
-                        @TipoDocumento,
-                        @NumeroDocumento,
-                        @Proveedor,
-                        @Monto,
-                        @RutaArchivo,
-                        @NombreArchivo,
-                        @ExtensionArchivo,
-                        @PesoArchivoKB,
-                        GETDATE()
-                    );
-                ";
+SELECT CAST(SCOPE_IDENTITY() AS INT);
+";
 
-                        await cn.ExecuteAsync(
-                            sqlDetalle,
+                        int solicitudId = await cn.ExecuteScalarAsync<int>(
+                            sqlCabecera,
                             new
                             {
-                                SolicitudId = solicitudId,
-                                doc.TipoDocumento,
-                                doc.NumeroDocumento,
-                                doc.Proveedor,
-                                doc.Monto,
-                                RutaArchivo = rutaWeb,
-                                NombreArchivo = nombreArchivo,
-                                ExtensionArchivo = extension,
-                                PesoArchivoKB = (int)(archivo.Length / 1024)
+                                UsuarioId = usuarioId,
+                                FechaDocumento = fechaDocumentoPrincipal,
+                                TipoGasto = tipoGasto,
+                                Justificacion = request.Justificacion.Trim(),
+                                Monto = montoTotal,
+
+                                Objetivo = objetivo,
+                                FechaInforme = fechaInforme,
+                                PeriodoDesde = request.PeriodoDesde?.Date,
+                                PeriodoHasta = request.PeriodoHasta?.Date,
+                                SupervisorUsuarioId = request.SupervisorUsuarioId,
+                                ProvisionAnticipo = provisionAnticipo
                             },
                             tx
                         );
 
-                        contador++;
-                    }
+                        // ==========================================
+                        // 6. FOLIO CORRELATIVO
+                        // ==========================================
 
-                    // =====================================================
-                    // AUDITORÍA CREACIÓN
-                    // =====================================================
-                    await cn.ExecuteAsync(
-                        @"
-    INSERT INTO dbo.RindeAuditoria
-    (
-        SolicitudId,
-        UsuarioId,
-        Accion,
-        EstadoAnterior,
-        EstadoNuevo,
-        Observacion,
-        FechaAccion,
-        Origen
-    )
-    VALUES
-    (
-        @SolicitudId,
-        @UsuarioId,
-        'CREADA',
-        NULL,
-        'PENDIENTE',
-        @Observacion,
-        GETDATE(),
-        'WEB'
-    );
-    ",
-                        new
+                        string folioRinde =
+                            $"RS-{DateTime.Now.Year}-{solicitudId:D6}";
+
+                        await cn.ExecuteAsync(
+                            @"
+UPDATE dbo.RindeSolicitudes
+SET FolioRinde = @FolioRinde
+WHERE Id = @SolicitudId;",
+                            new
+                            {
+                                FolioRinde = folioRinde,
+                                SolicitudId = solicitudId
+                            },
+                            tx
+                        );
+
+                        // ==========================================
+                        // 7. DOCUMENTOS Y COMPROBANTES
+                        // ==========================================
+
+                        const string sqlDetalle = @"
+INSERT INTO dbo.RindeSolicitudesAdjuntos
+(
+    SolicitudId,
+    TipoDocumento,
+    NumeroDocumento,
+    Proveedor,
+    Monto,
+    RutaArchivo,
+    NombreArchivo,
+    ExtensionArchivo,
+    PesoArchivoKB,
+    FechaCreacion,
+
+    FechaGasto,
+    DescripcionGasto,
+    CategoriaGasto
+)
+VALUES
+(
+    @SolicitudId,
+    @TipoDocumento,
+    @NumeroDocumento,
+    @Proveedor,
+    @Monto,
+    @RutaArchivo,
+    @NombreArchivo,
+    @ExtensionArchivo,
+    @PesoArchivoKB,
+    GETDATE(),
+
+    @FechaGasto,
+    @DescripcionGasto,
+    @CategoriaGasto
+);";
+
+                        int contador = 1;
+
+                        foreach (var doc in request.Documentos)
                         {
-                            SolicitudId = solicitudId,
-                            UsuarioId = usuarioId,
-                            Observacion = request.Justificacion
-                        },
-                        tx
-                    );
+                            var archivo = doc.ArchivoDocumento!;
 
+                            string extension = Path.GetExtension(
+                                archivo.FileName).ToLowerInvariant();
 
+                            string nombreArchivo =
+                                $"RINDE_{solicitudId}_{contador}_" +
+                                $"{Guid.NewGuid():N}{extension}";
 
+                            string rutaFisicaArchivo = Path.Combine(
+                                carpetaFisica,
+                                nombreArchivo
+                            );
 
+                            await using (var stream = new FileStream(
+                                rutaFisicaArchivo,
+                                FileMode.CreateNew))
+                            {
+                                // Registrar antes de copiar, para limpiar
+                                // también si falla la transferencia.
+                                archivosCreados.Add(rutaFisicaArchivo);
+                                await archivo.CopyToAsync(stream);
+                            }
 
-                    tx.Commit();
+                            string rutaWeb = "/" + Path.Combine(
+                                carpetaRelativa,
+                                nombreArchivo
+                            ).Replace("\\", "/");
 
-                    return Ok(new
+                            string? categoria = string.IsNullOrWhiteSpace(
+                                doc.CategoriaGasto)
+                                ? null
+                                : doc.CategoriaGasto.Trim().ToUpperInvariant();
+
+                            await cn.ExecuteAsync(
+                                sqlDetalle,
+                                new
+                                {
+                                    SolicitudId = solicitudId,
+                                    doc.TipoDocumento,
+                                    doc.NumeroDocumento,
+                                    doc.Proveedor,
+                                    doc.Monto,
+
+                                    RutaArchivo = rutaWeb,
+                                    NombreArchivo = nombreArchivo,
+                                    ExtensionArchivo = extension,
+                                    PesoArchivoKB =
+                                        (int)Math.Ceiling(archivo.Length / 1024m),
+
+                                    FechaGasto =
+                                        doc.FechaGasto?.Date ??
+                                        doc.FechaDocumento.Date,
+
+                                    DescripcionGasto = doc.DescripcionGasto,
+                                    CategoriaGasto = categoria
+                                },
+                                tx
+                            );
+
+                            contador++;
+                        }
+
+                        // ==========================================
+                        // 8. AUDITORÍA DE CREACIÓN
+                        // ==========================================
+
+                        await cn.ExecuteAsync(
+                            @"
+INSERT INTO dbo.RindeAuditoria
+(
+    SolicitudId,
+    UsuarioId,
+    Accion,
+    EstadoAnterior,
+    EstadoNuevo,
+    Observacion,
+    FechaAccion,
+    Origen
+)
+VALUES
+(
+    @SolicitudId,
+    @UsuarioId,
+    'CREADA',
+    NULL,
+    'PENDIENTE',
+    @Observacion,
+    GETDATE(),
+    'WEB'
+);",
+                            new
+                            {
+                                SolicitudId = solicitudId,
+                                UsuarioId = usuarioId,
+                                Observacion = request.Justificacion.Trim()
+                            },
+                            tx
+                        );
+
+                        // ==========================================
+                        // 9. CONFIRMAR TRANSACCIÓN
+                        // ==========================================
+
+                        tx.Commit();
+
+                        return Ok(new
+                        {
+                            ok = true,
+                            mensaje = "Rendición registrada correctamente.",
+                            id = solicitudId,
+                            folioRinde,
+                            montoTotal,
+                            cantidadDocumentos = request.Documentos.Count,
+                            provisionAnticipo
+                        });
+                    }
+                    catch
                     {
-                        ok = true,
-                        mensaje = "Rendición registrada correctamente.",
-                        id = solicitudId,
-                        montoTotal,
-                        cantidadDocumentos = request.Documentos.Count
-                    });
+                        tx.Rollback();
+                        throw;
+                    }
                 }
                 catch
                 {
-                    tx.Rollback();
+                    // Compensación de archivos físicos ante fallo
+                    foreach (string ruta in archivosCreados)
+                    {
+                        try
+                        {
+                            if (System.IO.File.Exists(ruta))
+                                System.IO.File.Delete(ruta);
+                        }
+                        catch
+                        {
+                            // No ocultar el error original.
+                            // Pendiente registrar en logging.
+                        }
+                    }
+
                     throw;
                 }
             }
@@ -302,7 +523,10 @@ namespace SpartanVentasApi.Controllers.RindeSpartan
             }
         }
 
-       // ================================================================================================
+
+
+
+        // ================================================================================================
 
 
 

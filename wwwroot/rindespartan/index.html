@@ -3,139 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RindeSpartan</title>
-
-    <!-- Bootstrap -->
+    <title>RindeSpartan | Centro financiero</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- CSS propio -->
     <link href="css/rindespartan.css" rel="stylesheet">
+    <link href="css/rinde-dashboard.css" rel="stylesheet">
 </head>
-<body>
+<body class="rinde-dashboard">
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+            <a class="brand" href="index.html">
+                <img src="/img/spartan-logo.png" alt="Spartan" class="logo-spartan">
+                <span><strong>RindeSpartan</strong><small>Gestión de gastos</small></span>
+            </a>
+            <div class="sidebar-caption">PLATAFORMA</div>
+            <nav class="nav flex-column sidebar-nav">
+                <a class="nav-link active" href="index.html" aria-current="page"><span class="nav-icon">⌂</span> Inicio</a>
+                <a class="nav-link" href="nueva_rendicion.html"><span class="nav-icon">＋</span> Nueva rendición</a>
+                <a class="nav-link" href="mis_rendiciones.html"><span class="nav-icon">▤</span> Mis rendiciones</a>
+                <a class="nav-link" href="aprobaciones.html" id="navAprobaciones"><span class="nav-icon">✓</span> Aprobaciones</a>
+            </nav>
+            <div class="sidebar-bottom"><span class="sidebar-dot"></span> SpartanCloud <small>Plataforma corporativa</small></div>
+        </aside>
 
-    <!-- HEADER -->
-    <header class="rinde-header d-flex align-items-center px-4">
+        <div class="main-area">
+            <header class="topbar">
+                <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false">☰</button>
+                <div class="topbar-heading"><span>SpartanCloud</span><span class="divider-dot">/</span><strong>RindeSpartan</strong></div>
+                <div class="user-chip"><span class="user-avatar" aria-hidden="true">●</span><span id="nombreUsuario">Usuario</span></div>
+            </header>
 
-        <img src="/img/spartan-logo.png"
-             alt="Spartan"
-             class="logo-spartan">
-
-        <div class="ms-3">
-            <h1 class="titulo-modulo">RindeSpartan</h1>
-            <div class="subtitulo-modulo">
-                Plataforma de Rendición de Gastos
-            </div>
-        </div>
-
-        <div class="ms-auto usuario-box">
-            <span id="nombreUsuario">Usuario</span>
-        </div>
-
-    </header>
-
-    <!-- CONTENIDO -->
-    <main class="container-fluid mt-4">
-
-        <div class="row g-4">
-
-            <!-- TARJETA SALDO -->
-            <div class="col-md-4">
-
-                <div class="card card-rinde shadow-sm">
-
-                    <div class="card-body">
-
-                        <div class="card-titulo">
-                            Saldo Disponible
-                        </div>
-
-                        <div class="saldo-monto" id="saldoDisponible">
-                            $0
-                        </div>
-
+            <main class="dashboard-content">
+                <section class="welcome-panel">
+                    <div>
+                        <div class="eyebrow">CENTRO DE OPERACIONES FINANCIERAS</div>
+                        <h1>Bienvenido a RindeSpartan</h1>
+                        <p>Gestiona tus gastos, consulta tus rendiciones y revisa el avance de tus solicitudes desde un solo lugar.</p>
                     </div>
+                    <a class="btn btn-spartan" href="nueva_rendicion.html">＋ Nueva rendición</a>
+                </section>
 
-                </div>
+                <div class="section-heading"><div><span class="section-kicker">RESUMEN</span><h2>Indicadores de gestión</h2></div><span class="data-note">Datos pendientes de conexión</span></div>
+                <section class="row g-3" aria-label="Indicadores">
+                    <div class="col-sm-6 col-xl-4"><div class="metric-card"><div class="metric-top"><span>Saldo disponible</span><span class="metric-symbol">$</span></div><div class="metric-value" id="saldoDisponible">—</div><small>Saldo asignado para rendiciones</small></div></div>
+                    <div class="col-sm-6 col-xl-4"><div class="metric-card"><div class="metric-top"><span>Gastos utilizados</span><span class="metric-symbol">↗</span></div><div class="metric-value" id="gastoUtilizado">—</div><small>Total de gastos registrados</small></div></div>
+                    <div class="col-sm-6 col-xl-4"><div class="metric-card"><div class="metric-top"><span>Rendiciones pendientes</span><span class="metric-symbol">◷</span></div><div class="metric-value" id="pendientes">—</div><small>Solicitudes pendientes de revisión</small></div></div>
+                </section>
 
-            </div>
+                <div class="section-heading operations-heading"><div><span class="section-kicker">ACCESOS DIRECTOS</span><h2>Centro de operaciones</h2></div></div>
+                <section class="row g-3" aria-label="Operaciones principales">
+                    <div class="col-md-4"><a class="operation-card" href="nueva_rendicion.html"><span class="operation-icon">＋</span><strong>Nueva rendición</strong><span>Registra tus gastos y adjunta comprobantes.</span><span class="operation-arrow">Continuar →</span></a></div>
+                    <div class="col-md-4"><a class="operation-card" href="mis_rendiciones.html"><span class="operation-icon">▤</span><strong>Mis rendiciones</strong><span>Consulta el historial y estado de tus solicitudes.</span><span class="operation-arrow">Consultar →</span></a></div>
+                    <div class="col-md-4"><a class="operation-card" href="aprobaciones.html" id="cardAprobaciones"><span class="operation-icon">✓</span><strong>Aprobaciones</strong><span>Revisa y gestiona las solicitudes asignadas.</span><span class="operation-arrow">Revisar →</span></a></div>
+                </section>
 
-            <!-- TARJETA UTILIZADO -->
-            <div class="col-md-4">
-
-                <div class="card card-rinde shadow-sm">
-
-                    <div class="card-body">
-
-                        <div class="card-titulo">
-                            Gastos Utilizados
-                        </div>
-
-                        <div class="saldo-monto text-danger" id="gastoUtilizado">
-                            $0
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- TARJETA PENDIENTES -->
-            <div class="col-md-4">
-
-                <div class="card card-rinde shadow-sm">
-
-                    <div class="card-body">
-
-                        <div class="card-titulo">
-                            Rendiciones Pendientes
-                        </div>
-
-                        <div class="saldo-monto text-warning" id="pendientes">
-                            0
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
+                <section class="activity-panel mt-4" aria-label="Actividad reciente">
+                    <div class="activity-header"><div><span class="section-kicker">SEGUIMIENTO</span><h2>Actividad reciente</h2></div><a href="mis_rendiciones.html">Ver mis rendiciones →</a></div>
+                    <div class="activity-empty"><span class="activity-empty-icon">▤</span><div><strong>Tu historial de rendiciones aparecerá aquí</strong><p>Este panel se conectará a las solicitudes reales cuando habilitemos la consulta de actividad.</p></div></div>
+                </section>
+            </main>
+            <footer class="dashboard-footer">RindeSpartan · SpartanCloud <span>Powered by MCF-2025</span></footer>
         </div>
-
-        <!-- ACCIONES -->
-        <div class="mt-5">
-
-            <div class="d-flex gap-3 flex-wrap">
-
-                <button class="btn btn-warning btn-lg" onclick="location.href='nueva_rendicion.html'">
-                    Nueva Rendición
-                </button>
-
-                <button class="btn btn-outline-dark btn-lg" onclick="location.href='mis_rendiciones.html'">
-                    Mis Rendiciones
-                </button>
-
-                <button class="btn btn-outline-secondary btn-lg" onclick="location.href='aprobaciones.html'">
-                    Aprobaciones
-                </button>
-
-            </div>
-
-        </div>
-
-    </main>
-
-    <!-- FOOTER -->
-    <footer class="footer-rinde text-center mt-5">
-        Powered by MCF-2025
-    </footer>
-
-    <!-- Bootstrap -->
+    </div>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- JS propio -->
     <script src="js/rinde-core.js"></script>
-
+    <script>
+        // Los valores temporales de rinde-core.js no deben mostrarse como cifras reales.
+        // Retirar este bloque cuando los indicadores se alimenten de la API.
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.getElementById('menuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            function setMenu(open) {
+                sidebar.classList.toggle('open', open);
+                backdrop.classList.toggle('show', open);
+                toggle.setAttribute('aria-expanded', String(open));
+            }
+            toggle.addEventListener('click', () => setMenu(!sidebar.classList.contains('open')));
+            backdrop.addEventListener('click', () => setMenu(false));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
+            ['saldoDisponible', 'gastoUtilizado', 'pendientes'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = '—';
+            });
+        });
+    </script>
 </body>
 </html>
